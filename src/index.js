@@ -2,10 +2,12 @@ const express = require("express");
 const cors = require("cors");
 const path = require("path");
 require("dotenv").config();
+const systemCtrl = require("./controllers/systemController");
 
 // ── Core Routes ──
 const authRoutes = require("./routes/authRoutes");
 const lookupRoutes = require("./routes/lookupRoutes");
+const dashboardRoutes = require("./routes/dashboardRoutes");
 
 // ── Master Routes ──
 const costCenterRoutes = require("./routes/master/costCenterRoutes");
@@ -48,9 +50,13 @@ app.use(
 app.use(express.json());
 app.use("/images", express.static(path.join(process.cwd(), "public/images")));
 
-// ── Routes ──
+// Endpoint untuk cek versi backend
+app.get("/api/system/info", systemCtrl.getSystemInfo);
+
+// ── Core Routes ──
 app.use("/api/auth", authRoutes);
 app.use("/api/lookups", lookupRoutes);
+app.use("/api/dashboard", dashboardRoutes);
 
 // ── Master Routes ──
 app.use("/api/master/cost-center", costCenterRoutes);
