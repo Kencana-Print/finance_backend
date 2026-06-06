@@ -9,7 +9,6 @@ const getCabangList = async (req, res) => {
     res.status(500).json({ success: false, message: e.message });
   }
 };
-
 // GET /?cabang=P04
 const getStokFinance = async (req, res) => {
   try {
