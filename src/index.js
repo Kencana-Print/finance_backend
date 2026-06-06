@@ -33,6 +33,20 @@ const rekonsiliasiBankRoutes = require("./routes/transaksi/rekonsiliasiBankRoute
 const pengajuanTransferRoutes = require("./routes/transaksi/pengajuanTransferRoutes");
 const pengajuanTransferFormRoutes = require("./routes/transaksi/pengajuanTransferFormRoutes");
 const terimaSetoranRoutes = require("./routes/transaksi/terimaSetoranRoutes");
+const terimaSetoranFormRoutes = require("./routes/transaksi/terimaSetoranFormRoutes");
+
+// ── Posting Routes ──
+const pembayaranCustomerRoutes = require("./routes/posting/pembayaranCustomerRoutes");
+const pembayaranCustomerFormRoutes = require("./routes/posting/pembayaranCustomerFormRoutes");
+const pembayaranCustKaosanRoutes = require("./routes/posting/pembayaranCustKaosanRoutes");
+const pembayaranCustKaosanFormRoutes = require("./routes/posting/pembayaranCustKaosanFormRoutes");
+
+// ── Laporan Routes ──
+const listJurnalRoutes = require("./routes/laporan/listJurnalRoutes");
+const bukuBesarRoutes = require("./routes/laporan/bukuBesarRoutes");
+const kasbonBelumSelesaiRoutes = require("./routes/laporan/kasbonBelumSelesaiRoutes");
+const lapRekonsiliasiBankRoutes = require("./routes/laporan/rekonsiliasiBankRoutes");
+const stokFinanceRoutes = require("./routes/laporan/stokFinanceRoutes");
 
 const app = express();
 
@@ -82,6 +96,23 @@ app.use("/api/transaksi/rekonsiliasi-bank", rekonsiliasiBankRoutes);
 app.use("/api/transaksi/pengajuan-transfer", pengajuanTransferRoutes);
 app.use("/api/transaksi/pengajuan-transfer/form", pengajuanTransferFormRoutes);
 app.use("/api/transaksi/terima-setoran", terimaSetoranRoutes);
+app.use("/api/transaksi/terima-setoran/form", terimaSetoranFormRoutes);
+
+// ── Posting Routes ──
+app.use("/api/posting/pembayaran-customer", pembayaranCustomerRoutes);
+app.use("/api/posting/pembayaran-customer/form", pembayaranCustomerFormRoutes);
+app.use("/api/posting/pembayaran-cust-kaosan", pembayaranCustKaosanRoutes);
+app.use(
+  "/api/posting/pembayaran-cust-kaosan/form",
+  pembayaranCustKaosanFormRoutes,
+);
+
+// ── Laporan Routes ──
+app.use("/api/laporan/list-jurnal", listJurnalRoutes);
+app.use("/api/laporan/buku-besar", bukuBesarRoutes);
+app.use("/api/laporan/kasbon-belum-selesai", kasbonBelumSelesaiRoutes);
+app.use("/api/laporan/rekonsiliasi-bank", lapRekonsiliasiBankRoutes);
+app.use("/api/laporan/stok-finance", stokFinanceRoutes);
 
 // ── Health check ──
 app.get("/api/health", (req, res) => {
