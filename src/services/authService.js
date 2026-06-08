@@ -59,4 +59,27 @@ const login = async (username, password) => {
   return { token, user: { ...payload, menus } };
 };
 
-module.exports = { login };
+const changePassword = async (userKode, oldPassword, newPassword) => {
+  // Cek password lama
+  const [[user]] = await db.query(
+    `SELECT user_kode, user_password
+     FROM tuser
+     WHERE UPPER(user_kode) = UPPER(?)`,
+    [userKode],
+  );
+
+  if (!user) throw new Error("User tidak ditemukan.");
+  if (user.user_password !== oldPassword)
+    throw new Error("Password lama salah.");
+
+  // Update password baru
+  await db.query(
+    `UPDATE tuser SET user_password = ?, date_modify = NOW()
+     WHERE user_kode = ?`,
+    [newPassword, user.user_kode],
+  );
+
+  return { success: true };
+};
+
+module.exports = { login, changePassword };

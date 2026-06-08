@@ -8,6 +8,8 @@ const systemCtrl = require("./controllers/systemController");
 const authRoutes = require("./routes/authRoutes");
 const lookupRoutes = require("./routes/lookupRoutes");
 const dashboardRoutes = require("./routes/dashboardRoutes");
+const masterUserRoutes = require("./routes/tools/masterUserRoutes");
+const masterUserFormRoutes = require("./routes/tools/masterUserFormRoutes");
 
 // ── Master Routes ──
 const costCenterRoutes = require("./routes/master/costCenterRoutes");
@@ -71,6 +73,8 @@ app.get("/api/system/info", systemCtrl.getSystemInfo);
 app.use("/api/auth", authRoutes);
 app.use("/api/lookups", lookupRoutes);
 app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/tools/master-user", masterUserRoutes);
+app.use("/api/tools/master-user/form", masterUserFormRoutes);
 
 // ── Master Routes ──
 app.use("/api/master/cost-center", costCenterRoutes);
