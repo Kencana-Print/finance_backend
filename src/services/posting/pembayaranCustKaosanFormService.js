@@ -30,11 +30,16 @@ const getDataPosting = async (startDate, endDate, cabang) => {
         FROM retail.tsetor_dtl d
         LEFT JOIN retail.tpiutang_dtl p ON p.pd_sd_angsur = d.sd_angsur
         WHERE d.sd_sh_nomor = h.sh_nomor
+          AND p.pd_ph_nomor IS NOT NULL
+          AND p.pd_ph_nomor <> ''
         LIMIT 1
-      ), CONCAT('KASIR TUNAI ', IFNULL((
+      ), NULLIF(TRIM(CONCAT('', IFNULL((
         SELECT d2.sd_inv FROM retail.tsetor_dtl d2
-        WHERE d2.sd_sh_nomor = h.sh_nomor LIMIT 1
-      ), '')))                                     AS Uraian,
+        WHERE d2.sd_sh_nomor = h.sh_nomor
+          AND d2.sd_inv IS NOT NULL
+          AND d2.sd_inv <> ''
+        LIMIT 1
+      ), ''))), ''))                               AS Uraian,
       IFNULL(c.cus_nama, '')                      AS Customer,
       IF(h.sh_jenis = 0, 'TUNAI',
         IF(h.sh_jenis = 1, 'TRANSFER', 'GIRO'))   AS Trs,
