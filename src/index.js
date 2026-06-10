@@ -36,6 +36,8 @@ const pengajuanTransferRoutes = require("./routes/transaksi/pengajuanTransferRou
 const pengajuanTransferFormRoutes = require("./routes/transaksi/pengajuanTransferFormRoutes");
 const terimaSetoranRoutes = require("./routes/transaksi/terimaSetoranRoutes");
 const terimaSetoranFormRoutes = require("./routes/transaksi/terimaSetoranFormRoutes");
+const voucherPembayaranRoutes = require("./routes/transaksi/voucherPembayaranRoutes");
+const voucherPembayaranFormRoutes = require("./routes/transaksi/voucherPembayaranFormRoutes");
 
 // ── Posting Routes ──
 const pembayaranCustomerRoutes = require("./routes/posting/pembayaranCustomerRoutes");
@@ -101,6 +103,8 @@ app.use("/api/transaksi/pengajuan-transfer", pengajuanTransferRoutes);
 app.use("/api/transaksi/pengajuan-transfer/form", pengajuanTransferFormRoutes);
 app.use("/api/transaksi/terima-setoran", terimaSetoranRoutes);
 app.use("/api/transaksi/terima-setoran/form", terimaSetoranFormRoutes);
+app.use("/api/transaksi/voucher-pembayaran", voucherPembayaranRoutes);
+app.use("/api/transaksi/voucher-pembayaran/form", voucherPembayaranFormRoutes);
 
 // ── Posting Routes ──
 app.use("/api/posting/pembayaran-customer", pembayaranCustomerRoutes);
