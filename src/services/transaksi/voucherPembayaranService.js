@@ -17,11 +17,6 @@ const getBrowse = async (startDate, endDate) => {
        IFNULL(b.sup_nama, '')                             AS Supplier,
        IFNULL(a.vou_nomor_pajak, '')                      AS NomorPajak,
        a.vou_total                                        AS Total,
-       IFNULL(kb.kb_nama, '')                              AS NamaBayar,
-       DATE_FORMAT(d.Tanggal, '%Y-%m-%d')                  AS TanggalBayar,
-       DATE_FORMAT(d.Tanggal_tempo, '%Y-%m-%d')            AS TanggalTempo,
-       IFNULL(d.account, '')                               AS AccountBayar,
-       IFNULL(d.kodeuser, '')                              AS UserPelunasan,
        IFNULL((
          SELECT SUM(d2.voud2_harga * d2.voud2_jumlah)
          FROM kencanaprint.tvoucher_dtl2 d2
@@ -34,8 +29,12 @@ const getBrowse = async (startDate, endDate) => {
        ), 0)                                              AS Net,
        IFNULL(a.vou_disc, 0)                             AS Disc,
        IFNULL(a.vou_status_realisasi, '')                AS Status,
-       IFNULL(d.nomor, '')                               AS NomorRealisasi,
-       IFNULL(d.Kode, '')                                AS KodeBayar,
+       IFNULL(pt.ptd_nomor, '')                          AS NomorRealisasi,
+       DATE_FORMAT(pt.ptd_realisasi, '%Y-%m-%d')         AS TanggalRealisasi,
+       IFNULL(pt.ptd_akun, '')                           AS AccountBayar,
+       IFNULL(rek.rek_nama, '')                          AS NamaAccount,
+       IFNULL(cc.cc_nama, '')                            AS CcNama,
+       IFNULL(pt.ptd_dc_nama, '')                        AS DcNama,
        IFNULL((
          SELECT
            IFNULL(IF(p.pin_acc = '' AND p.pin_dipakai = '', 'WAIT',
@@ -53,11 +52,12 @@ const getBrowse = async (startDate, endDate) => {
      FROM kencanaprint.tvoucher_hdr a
      LEFT JOIN kencanaprint.tsupplier b
             ON b.sup_kode = a.vou_sup_kode
-     LEFT JOIN kencanaprint.bayar_debet_detail c
-            ON c.vou_nomor = a.vou_nomor
-     LEFT JOIN kencanaprint.bayar_debet d
-            ON d.nomor = c.nomor
-     LEFT JOIN kencanaprint.tkodebayar kb ON kb.kb_kode = d.kode
+     LEFT JOIN tpengajuan_transfer_dtl pt
+            ON pt.ptd_trs = a.vou_nomor
+     LEFT JOIN trekening rek
+            ON rek.rek_kode = pt.ptd_akun
+     LEFT JOIN tcostcenter cc
+            ON cc.cc_kode = pt.ptd_cc_kode
      WHERE a.vou_tanggal >= ? AND a.vou_tanggal <= ?
      ORDER BY MID(a.vou_nomor, 5, 5)`,
     [startDate, endDate],

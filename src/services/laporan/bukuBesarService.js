@@ -20,20 +20,18 @@ const searchAccount = async (cabang, search) => {
   if (cabang === "P01") {
     sql = `SELECT rek_kode AS kode, rek_nama AS nama
            FROM trekening
-           WHERE (rek_kol_id = 1 OR rek_kol_id = 12)`;
+           WHERE rek_isaktif = 0
+             AND (rek_kol_id = 1 OR rek_kol_id = 12)
+           ORDER BY rek_kode`;
   } else {
     sql = `SELECT rek_kode AS kode, rek_nama AS nama
            FROM trekening
-           WHERE rek_cabang = ?`;
+           WHERE rek_isaktif = 0
+             AND rek_cabang = ?
+           ORDER BY rek_kode`;
     params.push(cabang);
   }
 
-  if (search) {
-    sql += ` AND (rek_kode LIKE ? OR rek_nama LIKE ?)`;
-    params.push(`%${search}%`, `%${search}%`);
-  }
-
-  sql += ` ORDER BY rek_kode LIMIT 100`;
   const [rows] = await db.query(sql, params);
   return rows;
 };

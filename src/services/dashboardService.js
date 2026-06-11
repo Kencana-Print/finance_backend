@@ -102,6 +102,17 @@ const getSummary = async (cabang) => {
     [cabang, cabang],
   );
 
+  // 8. Voucher Pembayaran belum diinputkan ke Pengajuan Transfer
+  const [[voucherPtRow]] = await db.query(
+    `SELECT COUNT(*) AS count, IFNULL(SUM(vou_total - IFNULL(vou_disc,0)), 0) AS total
+      FROM kencanaprint.tvoucher_hdr h
+      WHERE NOT EXISTS (
+        SELECT 1
+        FROM finance.tpengajuan_transfer_dtl d
+        WHERE d.ptd_trs = h.vou_nomor
+      )`,
+  );
+
   return {
     kasbon: { count: Number(kasbonRow.count), total: Number(kasbonRow.total) },
     transfer: { count: Number(pjtRow.count), total: Number(pjtRow.total) },
@@ -111,6 +122,10 @@ const getSummary = async (cabang) => {
     saldoKas: { account: defaultAccount, saldo: Number(saldoRow.saldo) },
     rekon: { selisihCount: Number(rekonRow.count) },
     stok: { negativeCount: Number(stokRow.count) },
+    voucherPt: {
+      count: Number(voucherPtRow.count),
+      total: Number(voucherPtRow.total),
+    },
   };
 };
 
