@@ -16,6 +16,18 @@ router.get(
   ctrl.getBrowseDetail,
 );
 router.get(
+  "/pending-all",
+  verifyToken,
+  checkPermission(menuId, "view"),
+  ctrl.getBrowsePendingAll,
+);
+router.get(
+  "/pending-all/detail",
+  verifyToken,
+  checkPermission(menuId, "view"),
+  ctrl.getBrowseDetailPendingAll,
+);
+router.get(
   "/status/:nomor",
   verifyToken,
   checkPermission(menuId, "view"),

@@ -42,4 +42,13 @@ const getBrowseDetail = async (req, res) => {
   }
 };
 
-module.exports = { getCabang, getBrowse, getBrowseDetail };
+const getBrowsePendingAll = async (req, res) => {
+  try {
+    const data = await svc.getBrowsePendingAll();
+    res.json({ success: true, data });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+};
+
+module.exports = { getCabang, getBrowse, getBrowseDetail, getBrowsePendingAll };

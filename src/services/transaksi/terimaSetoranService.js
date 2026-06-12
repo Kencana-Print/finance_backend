@@ -71,4 +71,20 @@ const getBrowseDetail = async (startDate, endDate, cabang) => {
   return rows;
 };
 
-module.exports = { getCabang, getBrowse, getBrowseDetail };
+// Khusus filter pending dari dashboard — semua cabang, tanpa filter tanggal
+const getBrowsePendingAll = async () => {
+  const [rows] = await db.query(
+    `SELECT
+       h.fsk_nomor                             AS Nomor,
+       DATE_FORMAT(h.fsk_tanggal, '%Y-%m-%d')  AS TglSetor,
+       DATE_FORMAT(h.fsk_tanggalv, '%Y-%m-%d') AS TglVerifikasi,
+       h.user_create                            AS Created,
+       h.fsk_userv                              AS Verified
+     FROM retail.tform_setorkasir_hdr h
+     WHERE (h.fsk_userv = '' OR h.fsk_userv IS NULL)
+     ORDER BY h.fsk_tanggal`,
+  );
+  return rows;
+};
+
+module.exports = { getCabang, getBrowse, getBrowseDetail, getBrowsePendingAll };

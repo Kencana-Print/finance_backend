@@ -281,6 +281,92 @@ const getPrintData = async (nomor) => {
   return rows;
 };
 
+// Khusus filter pending dari dashboard — semua periode, belum ada PT
+const getBrowsePendingAll = async () => {
+  const [rows] = await db.query(
+    `SELECT
+       a.vou_nomor                                         AS Nomor,
+       DATE_FORMAT(a.vou_tanggal, '%Y-%m-%d')             AS Tanggal,
+       a.vou_sup_kode                                     AS KodeSupplier,
+       IFNULL(b.sup_nama, '')                             AS Supplier,
+       IFNULL(a.vou_nomor_pajak, '')                      AS NomorPajak,
+       a.vou_total                                        AS Total,
+       IFNULL((
+         SELECT SUM(d2.voud2_harga * d2.voud2_jumlah)
+         FROM kencanaprint.tvoucher_dtl2 d2
+         WHERE d2.voud2_vou_nomor = a.vou_nomor
+       ), 0)                                              AS BahanTambahan,
+       a.vou_total - IFNULL((
+         SELECT SUM(d2.voud2_harga * d2.voud2_jumlah)
+         FROM kencanaprint.tvoucher_dtl2 d2
+         WHERE d2.voud2_vou_nomor = a.vou_nomor
+       ), 0)                                              AS Net,
+       IFNULL(a.vou_disc, 0)                             AS Disc,
+       IFNULL(a.vou_status_realisasi, '')                AS Status,
+       ''                                                 AS NomorRealisasi,
+       NULL                                               AS TanggalRealisasi,
+       ''                                                 AS AccountBayar,
+       ''                                                 AS NamaAccount,
+       ''                                                 AS CcNama,
+       ''                                                 AS DcNama,
+       IFNULL((
+         SELECT
+           IFNULL(IF(p.pin_acc = '' AND p.pin_dipakai = '', 'WAIT',
+             IF(p.pin_acc = 'Y' AND p.pin_dipakai = '', 'ACC',
+               IF(p.pin_acc = 'Y' AND p.pin_dipakai = 'Y', '',
+                 IF(p.pin_acc = 'N', 'TOLAK', '')))), '')
+         FROM kencanaprint.tspk_pin5 p
+         WHERE p.pin_trs = 'VOUCHER HUTANG'
+           AND p.pin_nomor = a.vou_nomor
+         ORDER BY p.pin_urut DESC
+         LIMIT 1
+       ), '')                                             AS Ngedit,
+       IFNULL(a.user_create, '')                         AS Usr,
+       DATE_FORMAT(a.date_create, '%Y-%m-%d %H:%i:%s')   AS Created
+     FROM kencanaprint.tvoucher_hdr a
+     LEFT JOIN kencanaprint.tsupplier b
+            ON b.sup_kode = a.vou_sup_kode
+     WHERE NOT EXISTS (
+       SELECT 1 FROM tpengajuan_transfer_dtl pt
+       WHERE pt.ptd_trs = a.vou_nomor
+     )
+     ORDER BY a.vou_tanggal`,
+  );
+  return rows;
+};
+
+const getBrowseDetailPendingAll = async () => {
+  const [rows] = await db.query(
+    `SELECT
+       d.voud_vou_nomor                                   AS Nomor,
+       IFNULL(d.voud_nota, '')                           AS Nota,
+       IFNULL(p.pojh_nomor, '')                          AS NomorPO,
+       DATE_FORMAT(d.voud_tgl_nota, '%Y-%m-%d')          AS Tanggal,
+       IFNULL(d.voud_type, '')                           AS Type,
+       IFNULL(d.voud_total, 0)                           AS Total,
+       IFNULL(s.spk_nomor, '')                           AS SpkNomor,
+       IFNULL(s.spk_nama, '')                            AS SpkNama,
+       IFNULL(bpj.bpj_jumlah, 0)                        AS Jumlah,
+       IFNULL(d.voud_bs, 0)                              AS Bs,
+       IFNULL(d.voud_tarifbs, 0)                         AS TarifBS
+     FROM kencanaprint.tvoucher_dtl d
+     INNER JOIN kencanaprint.tvoucher_hdr h
+             ON h.vou_nomor = d.voud_vou_nomor
+     LEFT JOIN kencanaprint.tbpj_hdr bpj
+            ON bpj.bpj_nomor = d.voud_nota
+     LEFT JOIN kencanaprint.tpojasa_hdr p
+            ON p.pojh_nomor = bpj.bpj_po_nomor
+     LEFT JOIN kencanaprint.tspk s
+            ON s.spk_nomor = p.pojh_spk_nomor
+     WHERE NOT EXISTS (
+       SELECT 1 FROM tpengajuan_transfer_dtl pt
+       WHERE pt.ptd_trs = h.vou_nomor
+     )
+     ORDER BY d.voud_vou_nomor`,
+  );
+  return rows;
+};
+
 module.exports = {
   getBrowse,
   getBrowseDetail,
@@ -288,4 +374,6 @@ module.exports = {
   cekPengajuan,
   requestPin5,
   getPrintData,
+  getBrowsePendingAll,
+  getBrowseDetailPendingAll,
 };

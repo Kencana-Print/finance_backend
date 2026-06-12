@@ -15,6 +15,18 @@ router.get(
   checkPermission(menuId, "view"),
   ctrl.getBrowseDetail,
 );
+router.get(
+  "/pending-all",
+  verifyToken,
+  checkPermission(menuId, "view"),
+  ctrl.getBrowsePendingAll,
+);
+router.get(
+  "/pending-all/detail",
+  verifyToken,
+  checkPermission(menuId, "view"),
+  ctrl.getBrowseDetailPendingAll,
+);
 router.delete(
   "/:nomor",
   verifyToken,

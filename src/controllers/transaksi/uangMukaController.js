@@ -4,12 +4,10 @@ const getBrowse = async (req, res) => {
   try {
     const { startDate, endDate, cabang } = req.query;
     if (!startDate || !endDate)
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "startDate dan endDate wajib diisi.",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "startDate dan endDate wajib diisi.",
+      });
 
     const data = await svc.getBrowse(startDate, endDate, cabang || "ALL");
     res.json({ success: true, data });
@@ -27,4 +25,13 @@ const deleteData = async (req, res) => {
   }
 };
 
-module.exports = { getBrowse, deleteData };
+const getBrowsePendingAll = async (req, res) => {
+  try {
+    const data = await svc.getBrowsePendingAll();
+    res.json({ success: true, data });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+};
+
+module.exports = { getBrowse, deleteData, getBrowsePendingAll };

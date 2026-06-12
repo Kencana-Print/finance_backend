@@ -16,6 +16,13 @@ router.get(
   ctrl.getCabang,
 );
 
+router.get(
+  "/pending-all",
+  verifyToken,
+  checkPermission(menuId, "view"),
+  ctrl.getBrowsePendingAll,
+);
+
 // Browse header
 router.get("/", verifyToken, checkPermission(menuId, "view"), ctrl.getBrowse);
 

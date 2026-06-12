@@ -90,4 +90,43 @@ const deleteData = async (nomor, cabang) => {
   }
 };
 
-module.exports = { getBrowse, deleteData };
+const getBrowsePendingAll = async () => {
+  const [rows] = await db.query(
+    `SELECT
+       b.bon_nomor        AS Nomor,
+       DATE_FORMAT(b.bon_tanggal, '%Y-%m-%d') AS Tanggal,
+       IF(b.bon_jenis=0,'KAS','BANK') AS Jenis,
+       r.rek_nama         AS NamaAccount,
+       b.bon_pjh_nomor    AS Pjh,
+       b.bon_nota         AS Nota,
+       b.bon_penerima     AS Penerima,
+       b.bon_nominal      AS Nominal,
+       IF(b.bon_jur_no='', 0,
+         IFNULL((
+           SELECT SUM(d.jurd_kredit)
+           FROM tjurnalitem d
+           WHERE d.jurd_jur_no = b.bon_jur_no
+         ), 0)
+       ) AS Terpakai,
+       (b.bon_nominal - IF(b.bon_jur_no='', 0,
+         IFNULL((
+           SELECT SUM(d.jurd_kredit)
+           FROM tjurnalitem d
+           WHERE d.jurd_jur_no = b.bon_jur_no
+         ), 0)
+       )) AS Sisa,
+       b.bon_keterangan   AS Keterangan,
+       b.bon_jur_no       AS NoBukti,
+       IF(b.bon_selesai=0,'Belum','Sudah') AS Selesai,
+       IF(IFNULL((
+         SELECT h.jur_close FROM tjurnal h WHERE h.jur_no = b.bon_jur_no
+       ), 0)=0,'Belum','Sudah') AS Closed
+     FROM tkasbon b
+     LEFT JOIN trekening r ON r.rek_kode = b.bon_rek_kode
+     WHERE b.bon_selesai = 0
+     ORDER BY b.bon_tanggal`,
+  );
+  return rows;
+};
+
+module.exports = { getBrowse, deleteData, getBrowsePendingAll };

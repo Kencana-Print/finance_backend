@@ -9,6 +9,12 @@ const {
 const menuId = 21;
 
 router.get("/", verifyToken, checkPermission(menuId, "view"), ctrl.getBrowse);
+router.get(
+  "/pending-all",
+  verifyToken,
+  checkPermission(menuId, "view"),
+  ctrl.getBrowsePendingAll,
+);
 router.delete(
   "/:nomor",
   verifyToken,

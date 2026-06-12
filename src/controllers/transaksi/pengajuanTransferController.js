@@ -46,4 +46,29 @@ const getStatus = async (req, res) => {
   }
 };
 
-module.exports = { getBrowse, getBrowseDetail, deleteData, getStatus };
+const getBrowsePendingAll = async (req, res) => {
+  try {
+    const data = await svc.getBrowsePendingAll();
+    res.json({ success: true, data });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+};
+
+const getBrowseDetailPendingAll = async (req, res) => {
+  try {
+    const data = await svc.getBrowseDetailPendingAll();
+    res.json({ success: true, data });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+};
+
+module.exports = {
+  getBrowse,
+  getBrowseDetail,
+  deleteData,
+  getStatus,
+  getBrowsePendingAll,
+  getBrowseDetailPendingAll,
+};
