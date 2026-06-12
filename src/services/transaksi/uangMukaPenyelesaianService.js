@@ -593,16 +593,17 @@ const saveData = async (payload, user) => {
 
         await conn.query(
           `
-          INSERT INTO tkasbonitem2
-            (bond2_nomor, bond2_nourut,
-             ${hasPjhLink ? "bond2_link, bond2_brg_kode," : ""}
-             bond2_nama, bond2_spesifikasi, bond2_satuan,
-             bond2_qty_realisasi, bond2_nominal_realisasi,
-             bond2_rek_kode, bond2_cc_kode, bond2_dcnama,
-             bond2_sup_kode, bond2_sup_nama,
-             bond2_bank, bond2_rekening, bond2_atasnama)
-          VALUES (?, ?${hasPjhLink ? ", ?, ?" : ""}, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `,
+  INSERT INTO tkasbonitem2
+    (bond2_nomor, bond2_nourut,
+     ${hasPjhLink ? "bond2_link, bond2_brg_kode," : ""}
+     bond2_nama, bond2_spesifikasi, bond2_satuan,
+     bond2_qty_realisasi, bond2_nominal_realisasi,
+     bond2_rek_kode, bond2_cc_kode, bond2_dcnama,
+     bond2_sup_kode, bond2_sup_nama,
+     bond2_bank, bond2_rekening, bond2_atasnama,
+     bond2_verified)
+  VALUES (?, ?${hasPjhLink ? ", ?, ?" : ""}, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+`,
           [
             nomor,
             nourut,
@@ -620,6 +621,7 @@ const saveData = async (payload, user) => {
             d.bank || "",
             d.rekening || "",
             d.atasnama || "",
+            v, // ← bond2_verified
           ],
         );
         nourut++;
