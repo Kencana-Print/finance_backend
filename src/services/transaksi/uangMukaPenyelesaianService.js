@@ -946,7 +946,7 @@ const getListPermintaanGarmen = async (cabang) => {
   `;
   const params = [];
   if (cabang === "P01") {
-    sql += ` AND h.mb_mintake = 'HO-'`;
+    sql += ` AND h.mb_mintake = 'HO'`;
   } else if (cabang) {
     sql += ` AND h.mb_mintake = ?`;
     params.push(cabang);
