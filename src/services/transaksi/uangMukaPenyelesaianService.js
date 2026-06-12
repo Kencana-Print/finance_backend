@@ -318,6 +318,20 @@ const getNomorOtomatis = async (bonNomor, conn) => {
   return row.max_val;
 };
 
+// ── Generate nomor voucher bayar_debet: BYR/KODE/YY/NNNNN ─────────────
+const getVoucherNomor = async (kode, tanggal, conn) => {
+  const yy = new Date(tanggal).getFullYear().toString().slice(-2);
+  const prefix = `BYR/${kode}/${yy}`;
+  const [[row]] = await (conn || db).query(
+    `SELECT IFNULL(MAX(RIGHT(nomor,5)),'00000') AS mx
+     FROM kencanaprint.bayar_debet
+     WHERE LEFT(nomor,?) = ?`,
+    [prefix.length, prefix],
+  );
+  const next = Number(row.mx) + 1;
+  return `${prefix}${String(next).padStart(5, "0")}`;
+};
+
 // ── Simpan penyelesaian ───────────────────────────────────────────────
 const saveData = async (payload, user) => {
   const {
@@ -593,17 +607,17 @@ const saveData = async (payload, user) => {
 
         await conn.query(
           `
-  INSERT INTO tkasbonitem2
-    (bond2_nomor, bond2_nourut,
-     ${hasPjhLink ? "bond2_link, bond2_brg_kode," : ""}
-     bond2_nama, bond2_spesifikasi, bond2_satuan,
-     bond2_qty_realisasi, bond2_nominal_realisasi,
-     bond2_rek_kode, bond2_cc_kode, bond2_dcnama,
-     bond2_sup_kode, bond2_sup_nama,
-     bond2_bank, bond2_rekening, bond2_atasnama,
-     bond2_verified)
-  VALUES (?, ?${hasPjhLink ? ", ?, ?" : ""}, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-`,
+            INSERT INTO tkasbonitem2
+              (bond2_nomor, bond2_nourut,
+              ${hasPjhLink ? "bond2_link, bond2_brg_kode," : ""}
+              bond2_nama, bond2_spesifikasi, bond2_satuan,
+              bond2_qty_realisasi, bond2_nominal_realisasi,
+              bond2_rek_kode, bond2_cc_kode, bond2_dcnama,
+              bond2_sup_kode, bond2_sup_nama,
+              bond2_bank, bond2_rekening, bond2_atasnama,
+              bond2_verified)
+            VALUES (?, ?${hasPjhLink ? ", ?, ?" : ""}, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `,
           [
             nomor,
             nourut,
@@ -633,8 +647,12 @@ const saveData = async (payload, user) => {
           if (vou === 0) {
             // Simpan header bayar_debet 1 kali saja
             if (!currentByrVoucher) {
-              // TODO: Ganti ini dengan fungsi penomoran voucher backend-mu seperti getvoucher('CS'/'BT') di Delphi
-              currentByrVoucher = "GENERATE_VOUCHER_DI_SINI";
+              const kodeBayar = jenis === "KAS" ? "CS" : "BT";
+              currentByrVoucher = await getVoucherNomor(
+                kodeBayar,
+                tgl_bkk,
+                conn,
+              );
               await conn.query(
                 `UPDATE tkasbon SET bon_byrvoucher=? WHERE bon_nomor=?`,
                 [currentByrVoucher, nomor],
