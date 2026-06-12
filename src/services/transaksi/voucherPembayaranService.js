@@ -87,8 +87,8 @@ const getBrowseDetail = async (startDate, endDate) => {
      FROM kencanaprint.tvoucher_dtl d
      INNER JOIN kencanaprint.tvoucher_hdr h
              ON h.vou_nomor = d.voud_vou_nomor
-     INNER JOIN kencanaprint.tbpj_hdr bpj
-             ON bpj.bpj_nomor = d.voud_nota
+     LEFT JOIN kencanaprint.tbpj_hdr bpj
+            ON bpj.bpj_nomor = d.voud_nota
      LEFT JOIN kencanaprint.tpojasa_hdr p
             ON p.pojh_nomor = bpj.bpj_po_nomor
      LEFT JOIN kencanaprint.tspk s
