@@ -527,7 +527,7 @@ const save = async (payload, userKode) => {
   let xtotal = 0;
   for (const d of detail) {
     if (d.tipe && d.nomor) {
-      if (["BPB", "BPJ", "POE"].includes(d.tipe)) {
+      if (["BPB", "BPJ", "POE", "MMT", "BPE", "BPG"].includes(d.tipe)) {
         xtotal += Number(d.total);
       } else if (["RET", "PJG"].includes(d.tipe)) {
         xtotal -= Number(d.total);
