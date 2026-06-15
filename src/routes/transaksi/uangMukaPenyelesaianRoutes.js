@@ -21,6 +21,12 @@ router.get(
   ctrl.getAccountOptions,
 );
 router.get(
+  "/account/:kode",
+  verifyToken,
+  checkPermission(menuId, "view"),
+  ctrl.getAccountByKode,
+);
+router.get(
   "/cost-center",
   verifyToken,
   checkPermission(menuId, "view"),
@@ -37,6 +43,12 @@ router.post(
   verifyToken,
   checkPermission(menuId, "insert"),
   ctrl.saveData,
+);
+router.post(
+  "/supplier",
+  verifyToken,
+  checkPermission(menuId, "edit"),
+  ctrl.createSupplier,
 );
 
 // ── Routes Bantuan Pencarian (F1 - F5) ────────────────────────────────

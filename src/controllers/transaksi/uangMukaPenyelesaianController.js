@@ -22,6 +22,15 @@ const getAccountOptions = async (req, res) => {
   }
 };
 
+const getAccountByKode = async (req, res) => {
+  try {
+    const data = await svc.getAccountByKode(req.params.kode);
+    res.json({ success: true, data });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+};
+
 const getCostCenterOptions = async (req, res) => {
   try {
     res.json({ success: true, data: await svc.getCostCenterOptions() });
@@ -135,12 +144,22 @@ const getDetailInvoiceGarmen = async (req, res) => {
   }
 };
 
+const createSupplier = async (req, res) => {
+  try {
+    const kode = await svc.createSupplier(req.body, req.user.kode);
+    res.json({ success: true, data: { kode } });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+};
+
 module.exports = {
   getFormData,
   getAccountOptions,
   getCostCenterOptions,
   getDcOptions,
   saveData,
+  getAccountByKode,
   getListPengajuanGA,
   getDetailPengajuanGA,
   getListPoExternal,
@@ -149,4 +168,5 @@ module.exports = {
   getDetailPermintaanGarmen,
   getListInvoiceGarmen,
   getDetailInvoiceGarmen,
+  createSupplier,
 };

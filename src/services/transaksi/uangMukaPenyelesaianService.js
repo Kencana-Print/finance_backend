@@ -825,6 +825,16 @@ const saveData = async (payload, user) => {
   }
 };
 
+// ── Get single account by kode ────────────────────────────────────────
+const getAccountByKode = async (kode) => {
+  const [[row]] = await db.query(
+    `SELECT rek_kode AS kode, rek_nama AS nama, rek_cabang AS cabang
+     FROM trekening WHERE rek_kode = ? AND rek_isaktif = 0`,
+    [kode],
+  );
+  return row || null;
+};
+
 // ── Lookup cost center ────────────────────────────────────────────────
 const getCostCenterOptions = async () => {
   const [rows] = await db.query(
@@ -1096,10 +1106,87 @@ const getDetailInvoiceGarmen = async (ivNomor) => {
   });
 };
 
+// ── Generate kode supplier baru: S + 7 digit ──────────────────────────
+const generateSupplierKode = async (conn) => {
+  const [[row]] = await (conn || db).query(
+    'SELECT IFNULL(MAX(RIGHT(sup_kode, 7)), 0) AS max_val FROM kencanaprint.tsupplier WHERE LEFT(sup_kode, 1) = "S"',
+  );
+  const nextNum = parseInt(row.max_val, 10) + 1;
+  return "S" + String(nextNum).padStart(7, "0");
+};
+
+// ── Create supplier baru (dari form Penyelesaian Uang Muka) ───────────
+const createSupplier = async (data, user) => {
+  const conn = await db.getConnection();
+  try {
+    await conn.beginTransaction();
+
+    const kode = await generateSupplierKode(conn);
+
+    await conn.query(
+      `INSERT INTO kencanaprint.tsupplier (
+        sup_kode, sup_nama, sup_alamat, sup_kota, sup_telp, sup_hp, sup_fax, sup_cp,
+        sup_npwp, sup_nama_npwp, sup_alamat_npwp, sup_kota_npwp, sup_top, sup_targetmitra,
+        sup_ket, sup_bahan, sup_cmt, sup_accesories, sup_obat, sup_sparepart, sup_atk, sup_jasa,
+        sup_aktif, user_create, date_create
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+      [
+        kode,
+        data.Nama,
+        data.Alamat || "",
+        data.Kota || "",
+        data.Telp || "",
+        data.Hp || "",
+        data.Fax || "",
+        data.Contact || "",
+        data.NpwpKode || "",
+        data.NpwpNama || "",
+        data.NpwpAlamat || "",
+        data.NpwpKota || "",
+        data.Top || 0,
+        data.TargetMitra || 0,
+        data.Keterangan || "",
+        data.Jenis?.Bahan ? "Y" : "N",
+        data.Jenis?.Cmt ? "Y" : "N",
+        data.Jenis?.Acc ? "Y" : "N",
+        data.Jenis?.Obat ? "Y" : "N",
+        data.Jenis?.Sparepart ? "Y" : "N",
+        data.Jenis?.Atk ? "Y" : "N",
+        data.Jenis?.Jasa ? "Y" : "N",
+        data.Aktif || "Y",
+        user,
+      ],
+    );
+
+    // Insert rekening (jika ada)
+    if (data.RekeningList && data.RekeningList.length > 0) {
+      const detailVals = data.RekeningList.filter(
+        (r) => r.Rekening && r.Rekening.trim() !== "",
+      ).map((r) => [kode, r.Bank || "", r.Rekening, r.AtasNama || ""]);
+
+      if (detailVals.length > 0) {
+        await conn.query(
+          "INSERT INTO kencanaprint.tsupplieritem (supd_kode, supd_bank, supd_rekening, supd_atasnama) VALUES ?",
+          [detailVals],
+        );
+      }
+    }
+
+    await conn.commit();
+    return kode;
+  } catch (error) {
+    await conn.rollback();
+    throw error;
+  } finally {
+    conn.release();
+  }
+};
+
 module.exports = {
   getFormData,
   getAccountOptions,
   saveData,
+  getAccountByKode,
   getCostCenterOptions,
   getDcOptions,
   getListPengajuanGA,
@@ -1110,4 +1197,5 @@ module.exports = {
   getDetailPermintaanGarmen,
   getListInvoiceGarmen,
   getDetailInvoiceGarmen,
+  createSupplier,
 };

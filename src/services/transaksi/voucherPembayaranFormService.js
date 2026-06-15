@@ -308,18 +308,29 @@ const searchNota = async (type, supKode, search = "") => {
     if (search) params.push(like, like, like);
   } else if (type === "BPG") {
     const hasSupKode = supKode && supKode.trim() !== "";
-    sql = `SELECT h.bpb_nomor AS Nomor,
-          DATE_FORMAT(h.bpb_tanggal, '%Y-%m-%d') AS Tanggal,
-          IFNULL(h.bpb_ket, '') AS Keterangan,
-          IFNULL(s.sup_nama, '') AS Supplier,
-          IFNULL(h.bpb_sup_kode, '') AS SupKode,
-          h.bpb_jenis AS Jenis
-         FROM kencanaprint.tgarmenbpb_hdr h
-         LEFT JOIN kencanaprint.tsupplier s ON s.sup_kode = h.bpb_sup_kode
-         WHERE 1=1
-           ${hasSupKode ? "AND h.bpb_sup_kode = ?" : ""}
-           ${search ? "AND (h.bpb_nomor LIKE ? OR h.bpb_ket LIKE ? OR s.sup_nama LIKE ?)" : ""}
-         ORDER BY h.bpb_tanggal DESC LIMIT 100`;
+    sql = `
+    SELECT h.bpb_nomor AS Nomor,
+           DATE_FORMAT(h.bpb_tanggal, '%Y-%m-%d') AS Tanggal,
+           IFNULL(h.bpb_ket, '') AS Keterangan,
+           IFNULL(s.sup_nama, '') AS Supplier,
+           IFNULL(h.bpb_sup_kode, '') AS SupKode,
+           h.bpb_jenis AS Jenis,
+           IFNULL((
+             SELECT SUM(d.bpbd_jumlah * d.bpbd_harga)
+             FROM kencanaprint.tgarmenbpb_dtl d
+             WHERE d.bpbd_nomor = h.bpb_nomor
+           ), 0) AS Total,
+           IFNULL((
+             SELECT SUM(voud_total) FROM kencanaprint.tvoucher_dtl
+             WHERE voud_nota = h.bpb_nomor
+           ), 0) AS SudahDibayar
+    FROM kencanaprint.tgarmenbpb_hdr h
+    LEFT JOIN kencanaprint.tsupplier s ON s.sup_kode = h.bpb_sup_kode
+    WHERE 1=1
+      ${hasSupKode ? "AND h.bpb_sup_kode = ?" : ""}
+      ${search ? "AND (h.bpb_nomor LIKE ? OR h.bpb_ket LIKE ? OR s.sup_nama LIKE ?)" : ""}
+    HAVING Total > SudahDibayar OR Total = 0
+    ORDER BY h.bpb_tanggal DESC LIMIT 100`;
     if (hasSupKode) params.push(supKode);
     if (search) params.push(like, like, like);
   } else {

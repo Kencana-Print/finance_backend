@@ -1,5 +1,9 @@
 // config/changelog.js
 const changelogs = {
+  "1.0.6": [
+    "Modul baru Mutasi Out Garmen, dipindahkan dari MANKSI",
+    "Perbaikan dari hasil meeting (Part 1)",
+  ],
   "1.0.5": ["Perbaikan dan Stabilisasi Sistem"],
   "1.0.4": ["Modul baru Voucher Pembayaran dan Realisasi Voucher Pembayaran"],
   "1.0.3": ["Update User Experience"],
