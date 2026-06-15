@@ -1,5 +1,8 @@
 // config/changelog.js
 const changelogs = {
+  "1.0.7": [
+    "Laporan Daftar Hutang, dipindahkan dari MANKSI. Disertai penambahan card Hutang pada Dashboard",
+  ],
   "1.0.6": [
     "Modul baru Mutasi Out Garmen, dipindahkan dari MANKSI",
     "Perbaikan dari hasil meeting (Part 1)",

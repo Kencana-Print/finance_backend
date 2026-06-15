@@ -113,6 +113,85 @@ const getSummary = async (cabang) => {
       )`,
   );
 
+  // 9. Daftar Hutang — Berbagai jenis BPB/Nota yang belum terbayar lunas (Sisa > 0)
+  const [[hutangRow]] = await db.query(
+    `SELECT
+        COUNT(*) AS count,
+        IFNULL(SUM(x.Sisa), 0) AS total
+      FROM (
+        -- 1. PBG (BPB dari PO)
+        SELECT h.bpb_nomor AS Nomor,
+          ROUND(SUM(
+            (d.bpbd_harga * (100 - d.bpbd_disc) / 100) * d.bpbd_jumlah *
+            IF(p.po_status_ppn = 1, (100 + p.po_ppn) / 100, 1)
+          ), 2) - IFNULL((SELECT SUM(voud_total) FROM kencanaprint.tvoucher_dtl WHERE voud_nota = h.bpb_nomor), 0) AS Sisa
+        FROM kencanaprint.tbpb_hdr h
+        INNER JOIN kencanaprint.tbpb_dtl d ON d.bpbd_bpb_nomor = h.bpb_nomor
+        INNER JOIN kencanaprint.tpo_hdr p ON p.po_nomor = h.bpb_po_nomor
+        GROUP BY h.bpb_nomor
+        HAVING Sisa > 0
+
+        UNION ALL
+
+        -- 2. BJG (BPJ dari PO Jasa)
+        SELECT h.bpj_nomor AS Nomor,
+          ROUND(
+            p.pojh_tarif * h.bpj_jumlah *
+            IF(p.pojh_status_ppn = 1, ((100 + p.pojh_ppn) / 100), 1)
+          , 2) - IFNULL((SELECT SUM(voud_total) FROM kencanaprint.tvoucher_dtl WHERE voud_nota = h.bpj_nomor), 0) AS Sisa
+        FROM kencanaprint.tbpj_hdr h
+        INNER JOIN kencanaprint.tpojasa_hdr p ON p.pojh_nomor = h.bpj_po_nomor
+        GROUP BY h.bpj_nomor
+        HAVING Sisa > 0
+
+        UNION ALL
+
+        -- 3. POE (PO External)
+        SELECT h.poe_nomor AS Nomor,
+          (h.poe_total - IFNULL((SELECT SUM(c.poed2_nominal) FROM kencanaprint.tpoexternal_dtl2 c WHERE c.poed2_nomor = h.poe_nomor), 0))
+          - IFNULL((SELECT SUM(voud_total) FROM kencanaprint.tvoucher_dtl WHERE voud_nota = h.poe_nomor), 0) AS Sisa
+        FROM kencanaprint.tpoexternal_hdr h
+        GROUP BY h.poe_nomor
+        HAVING Sisa > 0
+
+        UNION ALL
+
+        -- 4. MMT (Penerimaan Mutasi)
+        SELECT h.rec_nomor AS Nomor,
+          IFNULL((
+            SELECT SUM(IF(d.recd_harga < 200000, d.recd_harga * d.recd_qty_terima, d.recd_harga))
+            FROM kencanaprint.trec_mmt_dtl d
+            WHERE d.recd_rec_nomor = h.rec_nomor
+          ), 0) - IFNULL((SELECT SUM(voud_total) FROM kencanaprint.tvoucher_dtl WHERE voud_nota = h.rec_nomor), 0) AS Sisa
+        FROM kencanaprint.trec_mmt_hdr h
+        GROUP BY h.rec_nomor
+        HAVING Sisa > 0
+
+        UNION ALL
+
+        -- 5. BPE (BPB PO External)
+        SELECT h.bpe_nomor AS Nomor,
+          IFNULL(poe.poe_total, 0) - IFNULL((SELECT SUM(voud_total) FROM kencanaprint.tvoucher_dtl WHERE voud_nota = h.bpe_nomor), 0) AS Sisa
+        FROM kencanaprint.tbpbpoexternal_hdr h
+        LEFT JOIN kencanaprint.tpoexternal_hdr poe ON poe.poe_nomor = h.bpe_po
+        GROUP BY h.bpe_nomor
+        HAVING Sisa > 0
+
+        UNION ALL
+
+        -- 6. BPG (Garmen BPB)
+        SELECT h.bpb_nomor AS Nomor,
+          IFNULL((
+            SELECT SUM(d.bpbd_jumlah * d.bpbd_harga)
+            FROM kencanaprint.tgarmenbpb_dtl d
+            WHERE d.bpbd_nomor = h.bpb_nomor
+          ), 0) - IFNULL((SELECT SUM(voud_total) FROM kencanaprint.tvoucher_dtl WHERE voud_nota = h.bpb_nomor), 0) AS Sisa
+        FROM kencanaprint.tgarmenbpb_hdr h
+        GROUP BY h.bpb_nomor
+        HAVING Sisa > 0
+      ) x`,
+  );
+
   return {
     kasbon: { count: Number(kasbonRow.count), total: Number(kasbonRow.total) },
     transfer: { count: Number(pjtRow.count), total: Number(pjtRow.total) },
@@ -126,6 +205,7 @@ const getSummary = async (cabang) => {
       count: Number(voucherPtRow.count),
       total: Number(voucherPtRow.total),
     },
+    hutang: { count: Number(hutangRow.count), total: Number(hutangRow.total) },
   };
 };
 
