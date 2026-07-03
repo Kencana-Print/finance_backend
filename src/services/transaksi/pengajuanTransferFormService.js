@@ -114,6 +114,11 @@ const getPettyCashOptions = async (search = "") => {
       SELECT d.ptd_trs FROM finance.tpengajuan_transfer_dtl d
       WHERE d.ptd_trs <> ''
     )
+    AND EXISTS (
+      SELECT 1 FROM retail.tpettycash_hdr pc
+      WHERE pc.pc_noklaim = h.pck_nomor 
+      AND pc.pc_status = 'ACC'
+    )
     AND (h.pck_nomor LIKE ? OR h.pck_cab LIKE ?)
     ORDER BY h.pck_nomor 
   `,

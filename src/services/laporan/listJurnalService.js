@@ -12,7 +12,7 @@ const getListJurnal = async (startDate, endDate) => {
        MONTH(a.Tanggal)                          AS Bulan,
        YEAR(a.Tanggal)                           AS Tahun,
        DATE_FORMAT(a.Tanggal, '%Y-%m-%d')        AS Tanggal,
-       a.Nomor,
+       a.Nomor                                   AS Nomor,
        a.Referensi,
        a.Account,
        a.AccountName,
