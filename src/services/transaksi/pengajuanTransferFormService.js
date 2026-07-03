@@ -116,7 +116,7 @@ const getPettyCashOptions = async (search = "") => {
     )
     AND EXISTS (
       SELECT 1 FROM retail.tpettycash_hdr pc
-      WHERE pc.pc_noklaim = h.pck_nomor 
+      WHERE pc.pck_nomor = h.pck_nomor 
       AND pc.pc_status = 'ACC'
     )
     AND (h.pck_nomor LIKE ? OR h.pck_cab LIKE ?)
