@@ -1172,6 +1172,22 @@ const createSupplier = async (data, user) => {
       }
     }
 
+    // ── Koreksi cabang: Permintaan Garmen (MB) dari P01 → HO- ────────────
+    // Trigger tkasbonitem2_after_insert otomatis insert ke tmasterstok_finance
+    // memakai bon_cabang saat itu. Karena P01 secara bisnis diwakili sebagai
+    // HO- untuk Permintaan Garmen, kita koreksi baris yang baru saja dibuat
+    // trigger tersebut tanpa mengubah trigger itu sendiri.
+    if (cabang === "P01") {
+      await conn.query(
+        `UPDATE tmasterstok_finance
+          SET mst_cab = 'HO-'
+          WHERE mst_noreferensi = ?
+         AND mst_mb_nomor LIKE 'MB%'
+         AND mst_cab = 'P01'`,
+        [nomor],
+      );
+    }
+
     await conn.commit();
     return kode;
   } catch (error) {
