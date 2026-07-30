@@ -4,7 +4,7 @@ const db = require("../../config/database");
 const getZdtCloseMso = async () => {
   try {
     const [rows] = await db.query(
-      `SELECT tgl_close FROM kencanaprint.tversi WHERE aplikasi = "MANKSI" LIMIT 1`,
+      `SELECT tgl_close FROM kencanaprintnew.tversi WHERE aplikasi = "MANKSI" LIMIT 1`,
     );
     let ztglclose = 0;
     if (rows.length > 0) ztglclose = parseInt(rows[0].tgl_close, 10);
@@ -42,7 +42,7 @@ const generateNomor = async (tanggal, jenis) => {
 
   const [[row]] = await db.query(
     `SELECT IFNULL(MAX(CAST(RIGHT(mso_nomor, 5) AS UNSIGNED)), 0) AS max_val
-     FROM kencanaprint.tgarmenmso_hdr
+     FROM kencanaprintnew.tgarmenmso_hdr
      WHERE LEFT(mso_nomor, 8) = ?`,
     [prefixTahun],
   );
@@ -75,7 +75,7 @@ const getStokReal = async (
             ? "tmasterstok_sparepart"
             : "tmasterstok_atk";
     stokQuery = `SELECT IFNULL(SUM(mst_stok_in - mst_stok_out), 0) AS stk
-                 FROM kencanaprint.${tbl}
+                 FROM kencanaprintnew.${tbl}
                  WHERE mst_aktif="Y" AND mst_brg_kode=? AND mst_cab=?`;
   }
 
@@ -85,8 +85,8 @@ const getStokReal = async (
   if (bagian === "FINANCE") {
     const [[rowMso]] = await conn.query(
       `SELECT IFNULL(SUM(d.msod_jumlah), 0) AS jml
-       FROM kencanaprint.tgarmenmso_hdr h
-       INNER JOIN kencanaprint.tgarmenmso_dtl d ON d.msod_nomor = h.mso_nomor
+       FROM kencanaprintnew.tgarmenmso_hdr h
+       INNER JOIN kencanaprintnew.tgarmenmso_dtl d ON d.msod_nomor = h.mso_nomor
        WHERE h.mso_msi_nomor = "" AND h.mso_nomor <> ? AND d.msod_brg_kode = ?`,
       [nomorSaatIni || "", kodeBahan],
     );
@@ -120,11 +120,11 @@ const getDetail = async (nomor) => {
              )
            ), ""
          )
-         FROM kencanaprint.tspk_pin5
+         FROM kencanaprintnew.tspk_pin5
          WHERE pin_trs="MUTASI OUT" AND pin_nomor=mso_nomor
          ORDER BY pin_urut DESC LIMIT 1
        ), "") AS StatusEdit
-     FROM kencanaprint.tgarmenmso_hdr
+     FROM kencanaprintnew.tgarmenmso_hdr
      WHERE mso_nomor = ?`,
     [nomor],
   );
@@ -140,8 +140,8 @@ const getDetail = async (nomor) => {
        b.brg_satuan AS Satuan,
        d.msod_ket AS Spesifikasi,
        d.msod_jumlah AS Jumlah
-     FROM kencanaprint.tgarmenmso_dtl d
-     LEFT JOIN kencanaprint.tgarmen_brg b ON b.brg_kode = d.msod_brg_kode
+     FROM kencanaprintnew.tgarmenmso_dtl d
+     LEFT JOIN kencanaprintnew.tgarmen_brg b ON b.brg_kode = d.msod_brg_kode
      WHERE d.msod_nomor = ?
      ORDER BY d.msod_urut ASC`,
     [nomor],
@@ -178,12 +178,12 @@ const searchBarang = async (query) => {
     bagian === "FINANCE"
       ? "finance.tmasterstok_finance"
       : jenis === "ACCESORIES"
-        ? "kencanaprint.tmasterstok_acc"
+        ? "kencanaprintnew.tmasterstok_acc"
         : jenis === "OBAT"
-          ? "kencanaprint.tmasterstok_obat"
+          ? "kencanaprintnew.tmasterstok_obat"
           : jenis === "SPAREPART"
-            ? "kencanaprint.tmasterstok_sparepart"
-            : "kencanaprint.tmasterstok_atk";
+            ? "kencanaprintnew.tmasterstok_sparepart"
+            : "kencanaprintnew.tmasterstok_atk";
 
   let sql = `
     SELECT
@@ -195,7 +195,7 @@ const searchBarang = async (query) => {
         FROM ${tblStok} m
         WHERE m.mst_aktif="Y" AND m.mst_cab=? AND m.mst_brg_kode=b.brg_kode
       ), 0) AS Stok
-    FROM kencanaprint.tgarmen_brg b
+    FROM kencanaprintnew.tgarmen_brg b
     WHERE b.brg_aktif="Y" AND b.brg_jenis = ?
   `;
   const params = [cabang, jenis];
@@ -234,7 +234,7 @@ const save = async (data, userKode, userBagian, isNewMode) => {
     if (isNewMode) {
       nomorMutasi = await generateNomor(data.Tanggal, data.Jenis);
       await conn.query(
-        `INSERT INTO kencanaprint.tgarmenmso_hdr
+        `INSERT INTO kencanaprintnew.tgarmenmso_hdr
            (mso_jenis, mso_nomor, mso_tanggal, mso_cab, mso_kecab, mso_bagian, mso_ket, date_create, user_create)
          VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ?)`,
         [
@@ -250,7 +250,7 @@ const save = async (data, userKode, userBagian, isNewMode) => {
       );
     } else {
       await conn.query(
-        `UPDATE kencanaprint.tgarmenmso_hdr SET
+        `UPDATE kencanaprintnew.tgarmenmso_hdr SET
            mso_tanggal=?, mso_kecab=?, mso_ket=?, date_modified=NOW(), user_modified=?
          WHERE mso_nomor=?`,
         [
@@ -263,21 +263,21 @@ const save = async (data, userKode, userBagian, isNewMode) => {
       );
 
       await conn.query(
-        `DELETE FROM kencanaprint.tgarmenmso_dtl WHERE msod_nomor=?`,
+        `DELETE FROM kencanaprintnew.tgarmenmso_dtl WHERE msod_nomor=?`,
         [nomorMutasi],
       );
 
       // Tandai PIN ACC sudah dipakai
       if (data.StatusEdit === "ACC") {
         const [lastPin] = await conn.query(
-          `SELECT pin_urut FROM kencanaprint.tspk_pin5
+          `SELECT pin_urut FROM kencanaprintnew.tspk_pin5
            WHERE pin_trs="MUTASI OUT" AND pin_nomor=?
            ORDER BY pin_urut DESC LIMIT 1`,
           [nomorMutasi],
         );
         if (lastPin.length > 0) {
           await conn.query(
-            `UPDATE kencanaprint.tspk_pin5 SET pin_dipakai="Y"
+            `UPDATE kencanaprintnew.tspk_pin5 SET pin_dipakai="Y"
              WHERE pin_trs="MUTASI OUT" AND pin_nomor=? AND pin_urut=?`,
             [nomorMutasi, lastPin[0].pin_urut],
           );
@@ -303,7 +303,7 @@ const save = async (data, userKode, userBagian, isNewMode) => {
     ]);
 
     await conn.query(
-      `INSERT INTO kencanaprint.tgarmenmso_dtl
+      `INSERT INTO kencanaprintnew.tgarmenmso_dtl
          (msod_nomor, msod_mb_nomor, msod_brg_kode, msod_jumlah, msod_ket, msod_urut)
        VALUES ?`,
       [values],
@@ -329,7 +329,7 @@ const searchPermintaanFinance = async (jenis, cabangTujuan, search) => {
       h.mb_ket AS Keterangan,
       h.mb_cab AS Cab,
       h.user_create AS Peminta
-    FROM kencanaprint.tgarmenmintabeli_hdr h
+    FROM kencanaprintnew.tgarmenmintabeli_hdr h
     WHERE h.mb_nomor IN (
       SELECT DISTINCT c.bond2_link FROM finance.tkasbonitem2 c
       WHERE LEFT(c.bond2_link, 2) = "MB"
@@ -369,12 +369,12 @@ const getDetailPermintaanFinance = async (
        ), 0) AS Stok,
        IFNULL((
          SELECT SUM(d.msod_jumlah)
-         FROM kencanaprint.tgarmenmso_hdr h
-         INNER JOIN kencanaprint.tgarmenmso_dtl d ON d.msod_nomor = h.mso_nomor
+         FROM kencanaprintnew.tgarmenmso_hdr h
+         INNER JOIN kencanaprintnew.tgarmenmso_dtl d ON d.msod_nomor = h.mso_nomor
          WHERE h.mso_msi_nomor="" AND h.mso_nomor <> ? AND d.msod_brg_kode=k.bond2_brg_kode
        ), 0) AS Belum
      FROM finance.tkasbonitem2 k
-     LEFT JOIN kencanaprint.tgarmen_brg b ON b.brg_kode = k.bond2_brg_kode
+     LEFT JOIN kencanaprintnew.tgarmen_brg b ON b.brg_kode = k.bond2_brg_kode
      WHERE k.bond2_link = ?`,
     [cabangAsal, nomorMso || "", noPermintaan],
   );

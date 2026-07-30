@@ -10,7 +10,7 @@ const getCabangList = async () => {
        FROM finance.tmasterstok_finance
        UNION
        SELECT mso_cab AS cab
-       FROM kencanaprint.tgarmenmso_hdr
+       FROM kencanaprintnew.tgarmenmso_hdr
        WHERE mso_bagian = 'FINANCE'
        UNION
        SELECT cabang AS cab
@@ -31,7 +31,7 @@ const getCabangList = async () => {
 //
 // Layer terluar: SELECT y.*, (y.stk - y.Mutasi) AS REAL
 //
-// Layer tengah (y): dari kencanaprint.tgarmen_brg WHERE brg_kode IN
+// Layer tengah (y): dari kencanaprintnew.tgarmen_brg WHERE brg_kode IN
 //   (kode yang punya stok ≠ 0 di tmasterstok_finance)
 //   dengan 2 correlated subquery:
 //     stk    = SUM(mst_stok_in - mst_stok_out) dari tmasterstok_finance
@@ -73,8 +73,8 @@ const getMaster = async (cabang) => {
          -- untuk cabang+bagian FINANCE
          IFNULL((
            SELECT IFNULL(SUM(d.msod_jumlah), 0)
-           FROM kencanaprint.tgarmenmso_hdr h
-           INNER JOIN kencanaprint.tgarmenmso_dtl d
+           FROM kencanaprintnew.tgarmenmso_hdr h
+           INNER JOIN kencanaprintnew.tgarmenmso_dtl d
                    ON d.msod_nomor = h.mso_nomor
            WHERE h.mso_msi_nomor = ''
              AND h.mso_cab       = ?
@@ -82,7 +82,7 @@ const getMaster = async (cabang) => {
              AND d.msod_brg_kode = b.brg_kode
          ), 0) AS Mutasi
 
-       FROM kencanaprint.tgarmen_brg b
+       FROM kencanaprintnew.tgarmen_brg b
        WHERE b.brg_kode IN (
          -- Hanya barang yang punya stok ≠ 0 di cabang ini
          SELECT x.mst_brg_kode

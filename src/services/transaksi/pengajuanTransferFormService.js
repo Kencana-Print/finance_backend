@@ -17,7 +17,7 @@ const getSupplierOptions = async (search = "") => {
   const [rows] = await db.query(
     `
     SELECT sup_kode AS kode, sup_nama AS nama
-    FROM kencanaprint.tsupplier
+    FROM kencanaprintnew.tsupplier
     WHERE sup_aktif = 'Y'
       AND (sup_nama LIKE ? OR sup_kode LIKE ?)
     ORDER BY sup_nama 
@@ -34,8 +34,8 @@ const getSupplierDetail = async (kode) => {
     SELECT a.sup_kode AS kode, a.sup_nama AS nama,
       b.supd_bank AS bank, b.supd_rekening AS rekening,
       b.supd_atasnama AS atasnama
-    FROM kencanaprint.tsupplier a
-    LEFT JOIN kencanaprint.tsupplieritem b ON b.supd_kode = a.sup_kode
+    FROM kencanaprintnew.tsupplier a
+    LEFT JOIN kencanaprintnew.tsupplieritem b ON b.supd_kode = a.sup_kode
     WHERE a.sup_aktif = 'Y' AND a.sup_kode = ?
     ORDER BY b.supd_bank
   `,
@@ -54,13 +54,13 @@ const getVoucherOptions = async (search = "") => {
       s.sup_nama AS supplier,
       h.vou_total - IFNULL((
         SELECT SUM(voud2_harga * voud2_jumlah)
-        FROM kencanaprint.tvoucher_dtl2
+        FROM kencanaprintnew.tvoucher_dtl2
         WHERE voud2_vou_nomor = h.vou_nomor
       ), 0) AS nominal
-    FROM kencanaprint.tvoucher_hdr h
-    INNER JOIN kencanaprint.tsupplier s ON s.sup_kode = h.vou_sup_kode
+    FROM kencanaprintnew.tvoucher_hdr h
+    INNER JOIN kencanaprintnew.tsupplier s ON s.sup_kode = h.vou_sup_kode
     WHERE h.vou_nomor NOT IN (
-      SELECT b.vou_nomor FROM kencanaprint.bayar_debet_detail b
+      SELECT b.vou_nomor FROM kencanaprintnew.bayar_debet_detail b
     )
     AND (h.vou_nomor LIKE ? OR s.sup_nama LIKE ?)
     ORDER BY h.vou_nomor DESC 
@@ -83,12 +83,12 @@ const getPoExternalOptions = async (search = "") => {
       SELECT h.poe_nomor AS Nomor, h.poe_tanggal AS Tanggal,
         h.poe_spk_nomor AS SPK, u.sup_nama AS Supplier,
         h.poe_total AS Nominal,
-        IFNULL((SELECT SUM(c.poed2_nominal) FROM kencanaprint.tpoexternal_dtl2 c
+        IFNULL((SELECT SUM(c.poed2_nominal) FROM kencanaprintnew.tpoexternal_dtl2 c
                 WHERE c.poed2_nomor = h.poe_nomor), 0) AS DP,
-        IFNULL((SELECT SUM(v.voud_total) FROM kencanaprint.tvoucher_dtl v
+        IFNULL((SELECT SUM(v.voud_total) FROM kencanaprintnew.tvoucher_dtl v
                 WHERE v.voud_nota = h.poe_nomor), 0) AS Voucher
-      FROM kencanaprint.tpoexternal_hdr h
-      LEFT JOIN kencanaprint.tsupplier u ON u.sup_kode = h.poe_sup
+      FROM kencanaprintnew.tpoexternal_hdr h
+      LEFT JOIN kencanaprintnew.tsupplier u ON u.sup_kode = h.poe_sup
     ) x
     WHERE (x.Nominal - x.DP - x.Voucher) > 0
       AND (x.Nomor LIKE ? OR x.Supplier LIKE ? OR x.SPK LIKE ?)
@@ -185,7 +185,7 @@ const getDetailForm = async (nomor) => {
     FROM tpengajuan_transfer_hdr h
     INNER JOIN tpengajuan_transfer_dtl d ON d.ptd_nomor = h.pth_nomor
     LEFT JOIN trekening r ON r.rek_kode = h.pth_rek_kode
-    LEFT JOIN kencanaprint.tsupplier s ON s.sup_kode = d.ptd_sup_kode
+    LEFT JOIN kencanaprintnew.tsupplier s ON s.sup_kode = d.ptd_sup_kode
     LEFT JOIN trekening k ON k.rek_kode = d.ptd_akun
     LEFT JOIN tcostcenter c ON c.cc_kode = d.ptd_cc_kode
     WHERE h.pth_nomor = ?
@@ -266,7 +266,7 @@ const getVoucherNomor = async (tanggal, conn) => {
   const [[row]] = await (conn || db).query(
     `
     SELECT IFNULL(MAX(CAST(RIGHT(nomor,5) AS UNSIGNED)),0) AS max_val
-    FROM kencanaprint.bayar_debet WHERE LEFT(nomor,9) = ?
+    FROM kencanaprintnew.bayar_debet WHERE LEFT(nomor,9) = ?
   `,
     [prefix],
   );
@@ -589,11 +589,11 @@ const saveData = async (payload, user) => {
 
     // Delphi: delete link voucher & po external lama
     await conn.query(
-      `DELETE FROM kencanaprint.tpoexternal_dtl2 WHERE poed2_link = ?`,
+      `DELETE FROM kencanaprintnew.tpoexternal_dtl2 WHERE poed2_link = ?`,
       [actualNomor],
     );
     await conn.query(
-      `DELETE FROM kencanaprint.bayar_debet_detail WHERE vou_link = ?`,
+      `DELETE FROM kencanaprintnew.bayar_debet_detail WHERE vou_link = ?`,
       [actualNomor],
     );
 
@@ -659,7 +659,7 @@ const saveData = async (payload, user) => {
           );
           await conn.query(
             `
-            INSERT INTO kencanaprint.bayar_debet
+            INSERT INTO kencanaprintnew.bayar_debet
               (nomor, kode, account, tanggal, tanggal_tempo, total, kodeuser)
             VALUES (?, 'BT', ?, ?, ?, ?, ?)
             ON DUPLICATE KEY UPDATE total = ?
@@ -670,7 +670,7 @@ const saveData = async (payload, user) => {
         }
         await conn.query(
           `
-          INSERT INTO kencanaprint.bayar_debet_detail
+          INSERT INTO kencanaprintnew.bayar_debet_detail
             (nomor, vou_nomor, vou_link, nilai)
           VALUES (?, ?, ?, ?)
         `,
@@ -682,7 +682,7 @@ const saveData = async (payload, user) => {
       if ((d.trs || "").startsWith("POE")) {
         await conn.query(
           `
-          INSERT INTO kencanaprint.tpoexternal_dtl2
+          INSERT INTO kencanaprintnew.tpoexternal_dtl2
             (poed2_nomor, poed2_tanggal, poed2_nominal, poed2_akun, poed2_link)
           VALUES (?, ?, ?, ?, ?)
         `,
@@ -730,7 +730,7 @@ const getPrintData = async (nomor) => {
       d.ptd_ket AS keterangan,
       DATE_FORMAT(d.ptd_realisasi,'%d %b %Y') AS tglRealisasi
     FROM tpengajuan_transfer_dtl d
-    LEFT JOIN kencanaprint.tsupplier s ON s.sup_kode = d.ptd_sup_kode
+    LEFT JOIN kencanaprintnew.tsupplier s ON s.sup_kode = d.ptd_sup_kode
     WHERE d.ptd_nomor = ? AND d.ptd_batal = ''
     ORDER BY d.ptd_nourut
   `,

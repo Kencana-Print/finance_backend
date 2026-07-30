@@ -19,12 +19,12 @@ const getBrowse = async (startDate, endDate) => {
        a.vou_total                                        AS Total,
        IFNULL((
          SELECT SUM(d2.voud2_harga * d2.voud2_jumlah)
-         FROM kencanaprint.tvoucher_dtl2 d2
+         FROM kencanaprintnew.tvoucher_dtl2 d2
          WHERE d2.voud2_vou_nomor = a.vou_nomor
        ), 0)                                              AS BahanTambahan,
        a.vou_total - IFNULL((
          SELECT SUM(d2.voud2_harga * d2.voud2_jumlah)
-         FROM kencanaprint.tvoucher_dtl2 d2
+         FROM kencanaprintnew.tvoucher_dtl2 d2
          WHERE d2.voud2_vou_nomor = a.vou_nomor
        ), 0)                                              AS Net,
        IFNULL(a.vou_disc, 0)                             AS Disc,
@@ -41,7 +41,7 @@ const getBrowse = async (startDate, endDate) => {
              IF(p.pin_acc = 'Y' AND p.pin_dipakai = '', 'ACC',
                IF(p.pin_acc = 'Y' AND p.pin_dipakai = 'Y', '',
                  IF(p.pin_acc = 'N', 'TOLAK', '')))), '')
-         FROM kencanaprint.tspk_pin5 p
+         FROM kencanaprintnew.tspk_pin5 p
          WHERE p.pin_trs = 'VOUCHER HUTANG'
            AND p.pin_nomor = a.vou_nomor
          ORDER BY p.pin_urut DESC
@@ -49,8 +49,8 @@ const getBrowse = async (startDate, endDate) => {
        ), '')                                             AS Ngedit,
        IFNULL(a.user_create, '')                         AS Usr,
        DATE_FORMAT(a.date_create, '%Y-%m-%d %H:%i:%s')   AS Created
-     FROM kencanaprint.tvoucher_hdr a
-     LEFT JOIN kencanaprint.tsupplier b
+     FROM kencanaprintnew.tvoucher_hdr a
+     LEFT JOIN kencanaprintnew.tsupplier b
             ON b.sup_kode = a.vou_sup_kode
      LEFT JOIN tpengajuan_transfer_dtl pt
             ON pt.ptd_trs = a.vou_nomor
@@ -84,14 +84,14 @@ const getBrowseDetail = async (startDate, endDate) => {
        IFNULL(bpj.bpj_jumlah, 0)                        AS Jumlah,
        IFNULL(d.voud_bs, 0)                              AS Bs,
        IFNULL(d.voud_tarifbs, 0)                         AS TarifBS
-     FROM kencanaprint.tvoucher_dtl d
-     INNER JOIN kencanaprint.tvoucher_hdr h
+     FROM kencanaprintnew.tvoucher_dtl d
+     INNER JOIN kencanaprintnew.tvoucher_hdr h
              ON h.vou_nomor = d.voud_vou_nomor
-     LEFT JOIN kencanaprint.tbpj_hdr bpj
+     LEFT JOIN kencanaprintnew.tbpj_hdr bpj
             ON bpj.bpj_nomor = d.voud_nota
-     LEFT JOIN kencanaprint.tpojasa_hdr p
+     LEFT JOIN kencanaprintnew.tpojasa_hdr p
             ON p.pojh_nomor = bpj.bpj_po_nomor
-     LEFT JOIN kencanaprint.tspk s
+     LEFT JOIN kencanaprintnew.tspk s
             ON s.spk_nomor = p.pojh_spk_nomor
      WHERE h.vou_tanggal >= ? AND h.vou_tanggal <= ?
      ORDER BY d.voud_vou_nomor`,
@@ -109,7 +109,7 @@ const deleteData = async (nomor) => {
   // Ambil header dulu
   const [[hdr]] = await db.query(
     `SELECT vou_nomor, vou_tanggal
-     FROM kencanaprint.tvoucher_hdr
+     FROM kencanaprintnew.tvoucher_hdr
      WHERE vou_nomor = ?`,
     [nomor],
   );
@@ -124,18 +124,18 @@ const deleteData = async (nomor) => {
   try {
     // Hapus detail dulu (jika tidak ada CASCADE FK)
     await conn.query(
-      `DELETE FROM kencanaprint.tvoucher_dtl
+      `DELETE FROM kencanaprintnew.tvoucher_dtl
        WHERE voud_vou_nomor = ?`,
       [nomor],
     );
     await conn.query(
-      `DELETE FROM kencanaprint.tvoucher_dtl2
+      `DELETE FROM kencanaprintnew.tvoucher_dtl2
        WHERE voud2_vou_nomor = ?`,
       [nomor],
     );
     // Hapus header
     const [result] = await conn.query(
-      `DELETE FROM kencanaprint.tvoucher_hdr
+      `DELETE FROM kencanaprintnew.tvoucher_hdr
        WHERE vou_nomor = ?`,
       [nomor],
     );
@@ -158,7 +158,7 @@ const cekPengajuan = async (nomor) => {
   const [[hdr]] = await db.query(
     `SELECT vou_nomor, vou_tanggal,
             DATE_FORMAT(vou_tanggal, '%Y-%m-%d') AS Tanggal
-     FROM kencanaprint.tvoucher_hdr
+     FROM kencanaprintnew.tvoucher_hdr
      WHERE vou_nomor = ?`,
     [nomor],
   );
@@ -173,7 +173,7 @@ const cekPengajuan = async (nomor) => {
   // Delphi: jika pin_dipakai="" → pakai urut sama (update), else urut+1
   const [[lastPin]] = await db.query(
     `SELECT pin_urut, pin_dipakai, pin_alasan
-     FROM kencanaprint.tspk_pin5
+     FROM kencanaprintnew.tspk_pin5
      WHERE pin_trs = 'VOUCHER HUTANG' AND pin_nomor = ?
      ORDER BY pin_urut DESC LIMIT 1`,
     [nomor],
@@ -203,8 +203,8 @@ const requestPin5 = async (nomor, alasan, userKode) => {
   // Ambil data voucher untuk pin_tgl_trs dan pin_ket (Supplier)
   const [[hdr]] = await db.query(
     `SELECT h.vou_tanggal, IFNULL(s.sup_nama, '') AS Supplier
-     FROM kencanaprint.tvoucher_hdr h
-     LEFT JOIN kencanaprint.tsupplier s ON s.sup_kode = h.vou_sup_kode
+     FROM kencanaprintnew.tvoucher_hdr h
+     LEFT JOIN kencanaprintnew.tsupplier s ON s.sup_kode = h.vou_sup_kode
      WHERE h.vou_nomor = ?`,
     [nomor],
   );
@@ -213,7 +213,7 @@ const requestPin5 = async (nomor, alasan, userKode) => {
   // Tentukan urut
   const [[lastPin]] = await db.query(
     `SELECT pin_urut, pin_dipakai
-     FROM kencanaprint.tspk_pin5
+     FROM kencanaprintnew.tspk_pin5
      WHERE pin_trs = 'VOUCHER HUTANG' AND pin_nomor = ?
      ORDER BY pin_urut DESC LIMIT 1`,
     [nomor],
@@ -225,7 +225,7 @@ const requestPin5 = async (nomor, alasan, userKode) => {
   }
 
   await db.query(
-    `INSERT INTO kencanaprint.tspk_pin5
+    `INSERT INTO kencanaprintnew.tspk_pin5
        (pin_trs, pin_nomor, pin_urut, pin_tgl_trs, pin_ket,
         pin_tgl_minta, pin_user_minta, pin_alasan)
      VALUES ('VOUCHER HUTANG', ?, ?, ?, ?, NOW(), ?, ?)
@@ -261,19 +261,19 @@ const getPrintData = async (nomor) => {
        IFNULL(s.sup_atasnama, '')                     AS sup_atasnama,
        IFNULL(e.pojh_keterangan, '')                  AS pojh_keterangan,
        IFNULL((
-         SELECT bpj_po_nomor FROM kencanaprint.tbpj_hdr
+         SELECT bpj_po_nomor FROM kencanaprintnew.tbpj_hdr
          WHERE bpj_nomor = d.voud_nota
        ), '')                                         AS nomor_po,
        IFNULL((
          SELECT SUM(voud2_harga * voud2_jumlah)
-         FROM kencanaprint.tvoucher_dtl2
+         FROM kencanaprintnew.tvoucher_dtl2
          WHERE voud2_vou_nomor = h.vou_nomor
        ), 0)                                          AS bahan_tambahan
-     FROM kencanaprint.tvoucher_hdr h
-     INNER JOIN kencanaprint.tvoucher_dtl d ON d.voud_vou_nomor = h.vou_nomor
-     LEFT JOIN kencanaprint.tsupplier s ON s.sup_kode = h.vou_sup_kode
-     LEFT JOIN kencanaprint.tbpj_hdr bpj ON bpj.bpj_nomor = d.voud_nota
-     LEFT JOIN kencanaprint.tpojasa_hdr e ON e.pojh_nomor = bpj.bpj_po_nomor
+     FROM kencanaprintnew.tvoucher_hdr h
+     INNER JOIN kencanaprintnew.tvoucher_dtl d ON d.voud_vou_nomor = h.vou_nomor
+     LEFT JOIN kencanaprintnew.tsupplier s ON s.sup_kode = h.vou_sup_kode
+     LEFT JOIN kencanaprintnew.tbpj_hdr bpj ON bpj.bpj_nomor = d.voud_nota
+     LEFT JOIN kencanaprintnew.tpojasa_hdr e ON e.pojh_nomor = bpj.bpj_po_nomor
      WHERE h.vou_nomor = ?`,
     [nomor],
   );
@@ -293,12 +293,12 @@ const getBrowsePendingAll = async () => {
        a.vou_total                                        AS Total,
        IFNULL((
          SELECT SUM(d2.voud2_harga * d2.voud2_jumlah)
-         FROM kencanaprint.tvoucher_dtl2 d2
+         FROM kencanaprintnew.tvoucher_dtl2 d2
          WHERE d2.voud2_vou_nomor = a.vou_nomor
        ), 0)                                              AS BahanTambahan,
        a.vou_total - IFNULL((
          SELECT SUM(d2.voud2_harga * d2.voud2_jumlah)
-         FROM kencanaprint.tvoucher_dtl2 d2
+         FROM kencanaprintnew.tvoucher_dtl2 d2
          WHERE d2.voud2_vou_nomor = a.vou_nomor
        ), 0)                                              AS Net,
        IFNULL(a.vou_disc, 0)                             AS Disc,
@@ -315,7 +315,7 @@ const getBrowsePendingAll = async () => {
              IF(p.pin_acc = 'Y' AND p.pin_dipakai = '', 'ACC',
                IF(p.pin_acc = 'Y' AND p.pin_dipakai = 'Y', '',
                  IF(p.pin_acc = 'N', 'TOLAK', '')))), '')
-         FROM kencanaprint.tspk_pin5 p
+         FROM kencanaprintnew.tspk_pin5 p
          WHERE p.pin_trs = 'VOUCHER HUTANG'
            AND p.pin_nomor = a.vou_nomor
          ORDER BY p.pin_urut DESC
@@ -323,8 +323,8 @@ const getBrowsePendingAll = async () => {
        ), '')                                             AS Ngedit,
        IFNULL(a.user_create, '')                         AS Usr,
        DATE_FORMAT(a.date_create, '%Y-%m-%d %H:%i:%s')   AS Created
-     FROM kencanaprint.tvoucher_hdr a
-     LEFT JOIN kencanaprint.tsupplier b
+     FROM kencanaprintnew.tvoucher_hdr a
+     LEFT JOIN kencanaprintnew.tsupplier b
             ON b.sup_kode = a.vou_sup_kode
      WHERE NOT EXISTS (
        SELECT 1 FROM tpengajuan_transfer_dtl pt
@@ -349,14 +349,14 @@ const getBrowseDetailPendingAll = async () => {
        IFNULL(bpj.bpj_jumlah, 0)                        AS Jumlah,
        IFNULL(d.voud_bs, 0)                              AS Bs,
        IFNULL(d.voud_tarifbs, 0)                         AS TarifBS
-     FROM kencanaprint.tvoucher_dtl d
-     INNER JOIN kencanaprint.tvoucher_hdr h
+     FROM kencanaprintnew.tvoucher_dtl d
+     INNER JOIN kencanaprintnew.tvoucher_hdr h
              ON h.vou_nomor = d.voud_vou_nomor
-     LEFT JOIN kencanaprint.tbpj_hdr bpj
+     LEFT JOIN kencanaprintnew.tbpj_hdr bpj
             ON bpj.bpj_nomor = d.voud_nota
-     LEFT JOIN kencanaprint.tpojasa_hdr p
+     LEFT JOIN kencanaprintnew.tpojasa_hdr p
             ON p.pojh_nomor = bpj.bpj_po_nomor
-     LEFT JOIN kencanaprint.tspk s
+     LEFT JOIN kencanaprintnew.tspk s
             ON s.spk_nomor = p.pojh_spk_nomor
      WHERE NOT EXISTS (
        SELECT 1 FROM tpengajuan_transfer_dtl pt

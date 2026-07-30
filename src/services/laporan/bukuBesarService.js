@@ -99,7 +99,7 @@ const getBukuBesar = async (rekkode, startDate, endDate) => {
        )                                           AS TglTransfer
      FROM tjurnalitem b
      LEFT JOIN tjurnal a ON a.jur_no = b.jurd_jur_no
-     LEFT JOIN kencanaprint.terima_bayar_debet t ON t.nomor = a.jur_nomor
+     LEFT JOIN kencanaprintnew.terima_bayar_debet t ON t.nomor = a.jur_nomor
      LEFT JOIN retail.tsetor_hdr s ON s.sh_nomor = a.jur_nomor
      LEFT JOIN ttrs v ON v.kode = a.jur_tipetransaksi
      LEFT JOIN (

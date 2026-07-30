@@ -62,7 +62,7 @@ const getBrowseDetail = async (startDate, endDate) => {
       d.ptd_batal    AS KetBatal
     FROM tpengajuan_transfer_hdr h
     INNER JOIN tpengajuan_transfer_dtl d ON d.ptd_nomor = h.pth_nomor
-    LEFT JOIN kencanaprint.tsupplier s ON s.sup_kode = d.ptd_sup_kode
+    LEFT JOIN kencanaprintnew.tsupplier s ON s.sup_kode = d.ptd_sup_kode
     LEFT JOIN trekening r ON r.rek_kode = d.ptd_akun
     LEFT JOIN tcostcenter c ON c.cc_kode = d.ptd_cc_kode
     WHERE h.pth_tanggal BETWEEN ? AND ?
@@ -210,7 +210,7 @@ const getBrowseDetailPendingAll = async () => {
       d.ptd_batal    AS KetBatal
     FROM tpengajuan_transfer_hdr h
     INNER JOIN tpengajuan_transfer_dtl d ON d.ptd_nomor = h.pth_nomor
-    LEFT JOIN kencanaprint.tsupplier s ON s.sup_kode = d.ptd_sup_kode
+    LEFT JOIN kencanaprintnew.tsupplier s ON s.sup_kode = d.ptd_sup_kode
     LEFT JOIN trekening r ON r.rek_kode = d.ptd_akun
     LEFT JOIN tcostcenter c ON c.cc_kode = d.ptd_cc_kode
     WHERE h.pth_nomor IN (

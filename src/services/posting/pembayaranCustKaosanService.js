@@ -90,7 +90,7 @@ const getBrowseDetail = async (startDate, endDate) => {
 // Delphi cxButton4Click:
 //   - cek Closed="Sudah" → tolak
 //   - DELETE finance.tjurnal WHERE jur_no=?
-//   - jika cekstore(Cabang) → INSERT kencanaprint.tlog_sync
+//   - jika cekstore(Cabang) → INSERT kencanaprintnew.tlog_sync
 //   - ShellExecute syncho → skip di web
 const deleteData = async (nomor) => {
   const [[hdr]] = await db.query(
@@ -116,7 +116,7 @@ const deleteData = async (nomor) => {
     const perluSync = await cekStore(hdr.jur_cabang);
     if (perluSync) {
       await conn.query(
-        `INSERT INTO kencanaprint.tlog_sync
+        `INSERT INTO kencanaprintnew.tlog_sync
            (log_tabel, log_nomor, log_cab, log_task, log_sync)
          VALUES ('tjurnal', ?, ?, 'DELETE', 'Y')
          ON DUPLICATE KEY UPDATE log_sync = 'Y'`,

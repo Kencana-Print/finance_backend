@@ -6,7 +6,7 @@ const getMaxNomor = async (kode, tanggal) => {
   const prefix = `BYR/${kode}/${yy}`;
   const [[row]] = await db.query(
     `SELECT IFNULL(MAX(RIGHT(nomor,5)),'00000') AS mx
-     FROM kencanaprint.bayar_debet
+     FROM kencanaprintnew.bayar_debet
      WHERE LEFT(nomor,?) = ?`,
     [prefix.length, prefix],
   );
@@ -18,7 +18,7 @@ const getMaxNomor = async (kode, tanggal) => {
 const searchKodeBayar = async (q) => {
   const like = `%${q}%`;
   const [rows] = await db.query(
-    `SELECT kb_kode AS kode, kb_nama AS nama FROM kencanaprint.tkodebayar
+    `SELECT kb_kode AS kode, kb_nama AS nama FROM kencanaprintnew.tkodebayar
      ${q ? "WHERE kb_kode LIKE ? OR kb_nama LIKE ?" : ""}
      ORDER BY kb_kode`,
     q ? [like, like] : [],
@@ -28,7 +28,7 @@ const searchKodeBayar = async (q) => {
 
 const getKodeBayar = async (kode) => {
   const [[row]] = await db.query(
-    `SELECT kb_kode AS kode, kb_nama AS nama FROM kencanaprint.tkodebayar WHERE kb_kode = ?`,
+    `SELECT kb_kode AS kode, kb_nama AS nama FROM kencanaprintnew.tkodebayar WHERE kb_kode = ?`,
     [kode],
   );
   if (!row) throw new Error("Kode bayar tidak ditemukan.");
@@ -41,8 +41,8 @@ const searchAccount = async (q) => {
   const [rows] = await db.query(
     `SELECT d.perushd_rekening AS rekening, d.perushd_bank AS bank,
             d.perushd_atasnama AS atasnama, d.perushd_cabang AS cabang
-     FROM kencanaprint.tperusahaan_dtl d
-     INNER JOIN kencanaprint.tperusahaan p
+     FROM kencanaprintnew.tperusahaan_dtl d
+     INNER JOIN kencanaprintnew.tperusahaan p
        ON p.perush_kode = d.perushd_perush_kode AND p.perush_status_utama = 1
      ${q ? "WHERE d.perushd_rekening LIKE ? OR d.perushd_bank LIKE ? OR d.perushd_atasnama LIKE ?" : ""}
      ORDER BY d.perushd_rekening`,
@@ -54,8 +54,8 @@ const searchAccount = async (q) => {
 const getAccount = async (rekening) => {
   const [[row]] = await db.query(
     `SELECT d.perushd_rekening AS rekening, d.perushd_bank AS bank
-     FROM kencanaprint.tperusahaan_dtl d
-     INNER JOIN kencanaprint.tperusahaan p
+     FROM kencanaprintnew.tperusahaan_dtl d
+     INNER JOIN kencanaprintnew.tperusahaan p
        ON p.perush_kode = d.perushd_perush_kode AND p.perush_status_utama = 1
      WHERE d.perushd_rekening = ? LIMIT 1`,
     [rekening],
@@ -72,10 +72,10 @@ const searchVoucher = async (q, excludeNomor = "") => {
             DATE_FORMAT(h.vou_tanggal, '%Y-%m-%d') AS Tanggal,
             s.sup_nama AS Supplier,
             (h.vou_total - h.vou_disc) AS Total
-     FROM kencanaprint.tvoucher_hdr h
-     INNER JOIN kencanaprint.tsupplier s ON s.sup_kode = h.vou_sup_kode
+     FROM kencanaprintnew.tvoucher_hdr h
+     INNER JOIN kencanaprintnew.tsupplier s ON s.sup_kode = h.vou_sup_kode
      WHERE h.vou_nomor NOT IN (
-       SELECT b.vou_nomor FROM kencanaprint.bayar_debet_detail b
+       SELECT b.vou_nomor FROM kencanaprintnew.bayar_debet_detail b
        ${excludeNomor ? "WHERE b.nomor != ?" : ""}
      )
      ${q ? "AND (h.vou_nomor LIKE ? OR s.sup_nama LIKE ?)" : ""}
@@ -92,8 +92,8 @@ const loadVoucherDetail = async (vouNomor, currentNomor = "") => {
             DATE_FORMAT(h.vou_tanggal, '%Y-%m-%d') AS tanggalVou,
             (h.vou_total - h.vou_disc) AS nilai,
             h.vou_status_realisasi AS statusReal
-     FROM kencanaprint.tvoucher_hdr h
-     INNER JOIN kencanaprint.tsupplier s ON s.sup_kode = h.vou_sup_kode
+     FROM kencanaprintnew.tvoucher_hdr h
+     INNER JOIN kencanaprintnew.tsupplier s ON s.sup_kode = h.vou_sup_kode
      WHERE h.vou_nomor = ?`,
     [vouNomor],
   );
@@ -102,7 +102,7 @@ const loadVoucherDetail = async (vouNomor, currentNomor = "") => {
   if (Number(row.statusReal) === 1) {
     if (currentNomor) {
       const [[own]] = await db.query(
-        `SELECT 1 FROM kencanaprint.bayar_debet_detail WHERE nomor = ? AND vou_nomor = ?`,
+        `SELECT 1 FROM kencanaprintnew.bayar_debet_detail WHERE nomor = ? AND vou_nomor = ?`,
         [currentNomor, vouNomor],
       );
       if (!own) throw new Error("Voucher ini sudah direalisasi.");
@@ -128,13 +128,13 @@ const getDetailForm = async (nomor) => {
             b.vou_nomor AS vouNomor, s.sup_nama AS supplier,
             DATE_FORMAT(h.vou_tanggal, '%Y-%m-%d') AS tanggalVou,
             (h.vou_total - h.vou_disc) AS nilai
-     FROM kencanaprint.bayar_debet a
-     INNER JOIN kencanaprint.tkodebayar kb ON kb.kb_kode = a.kode
-     INNER JOIN kencanaprint.bayar_debet_detail b ON b.nomor = a.nomor
-     INNER JOIN kencanaprint.tvoucher_hdr h ON h.vou_nomor = b.vou_nomor
-     INNER JOIN kencanaprint.tsupplier s ON s.sup_kode = h.vou_sup_kode
-     LEFT JOIN kencanaprint.tperusahaan_dtl d ON d.perushd_rekening = a.account
-     LEFT JOIN kencanaprint.tperusahaan p
+     FROM kencanaprintnew.bayar_debet a
+     INNER JOIN kencanaprintnew.tkodebayar kb ON kb.kb_kode = a.kode
+     INNER JOIN kencanaprintnew.bayar_debet_detail b ON b.nomor = a.nomor
+     INNER JOIN kencanaprintnew.tvoucher_hdr h ON h.vou_nomor = b.vou_nomor
+     INNER JOIN kencanaprintnew.tsupplier s ON s.sup_kode = h.vou_sup_kode
+     LEFT JOIN kencanaprintnew.tperusahaan_dtl d ON d.perushd_rekening = a.account
+     LEFT JOIN kencanaprintnew.tperusahaan p
        ON p.perush_kode = d.perushd_perush_kode AND p.perush_status_utama = 1
      WHERE a.nomor = ?`,
     [nomor],
@@ -172,7 +172,7 @@ const save = async (payload, userKode) => {
       if (kodeBayar !== "BG")
         finalNomor = await getMaxNomor(kodeBayar, tanggal);
       await conn.query(
-        `INSERT INTO kencanaprint.bayar_debet
+        `INSERT INTO kencanaprintnew.bayar_debet
          (nomor, kode, account, tanggal, tanggal_tempo, total, kodeuser)
          VALUES (?, ?, ?, ?, ?, ?, ?)`,
         [
@@ -187,15 +187,15 @@ const save = async (payload, userKode) => {
       );
     } else {
       await conn.query(
-        `UPDATE kencanaprint.bayar_debet
+        `UPDATE kencanaprintnew.bayar_debet
          SET tanggal=?, tanggal_tempo=?, account=?, total=?
          WHERE nomor=?`,
         [tanggal, tanggalTempo, account, total, nomor],
       );
       // Reset status realisasi voucher lama sebelum re-insert
       await conn.query(
-        `UPDATE kencanaprint.tvoucher_hdr h
-         INNER JOIN kencanaprint.bayar_debet_detail d ON d.vou_nomor = h.vou_nomor
+        `UPDATE kencanaprintnew.tvoucher_hdr h
+         INNER JOIN kencanaprintnew.bayar_debet_detail d ON d.vou_nomor = h.vou_nomor
          SET h.vou_status_realisasi = 0
          WHERE d.nomor = ?`,
         [nomor],
@@ -204,18 +204,18 @@ const save = async (payload, userKode) => {
 
     // DELETE + INSERT detail
     await conn.query(
-      `DELETE FROM kencanaprint.bayar_debet_detail WHERE nomor = ?`,
+      `DELETE FROM kencanaprintnew.bayar_debet_detail WHERE nomor = ?`,
       [finalNomor],
     );
     for (const d of detail) {
       await conn.query(
-        `INSERT INTO kencanaprint.bayar_debet_detail (nomor, vou_nomor, nilai)
+        `INSERT INTO kencanaprintnew.bayar_debet_detail (nomor, vou_nomor, nilai)
          VALUES (?, ?, ?)`,
         [finalNomor, d.vouNomor, d.nilai],
       );
       // Set voucher sebagai sudah direalisasi
       await conn.query(
-        `UPDATE kencanaprint.tvoucher_hdr SET vou_status_realisasi = 1
+        `UPDATE kencanaprintnew.tvoucher_hdr SET vou_status_realisasi = 1
          WHERE vou_nomor = ?`,
         [d.vouNomor],
       );
@@ -237,18 +237,19 @@ const hapus = async (nomor) => {
   try {
     await conn.beginTransaction();
     await conn.query(
-      `UPDATE kencanaprint.tvoucher_hdr h
-       INNER JOIN kencanaprint.bayar_debet_detail d ON d.vou_nomor = h.vou_nomor
+      `UPDATE kencanaprintnew.tvoucher_hdr h
+       INNER JOIN kencanaprintnew.bayar_debet_detail d ON d.vou_nomor = h.vou_nomor
        SET h.vou_status_realisasi = 0 WHERE d.nomor = ?`,
       [nomor],
     );
     await conn.query(
-      `DELETE FROM kencanaprint.bayar_debet_detail WHERE nomor = ?`,
+      `DELETE FROM kencanaprintnew.bayar_debet_detail WHERE nomor = ?`,
       [nomor],
     );
-    await conn.query(`DELETE FROM kencanaprint.bayar_debet WHERE nomor = ?`, [
-      nomor,
-    ]);
+    await conn.query(
+      `DELETE FROM kencanaprintnew.bayar_debet WHERE nomor = ?`,
+      [nomor],
+    );
     await conn.commit();
   } catch (e) {
     await conn.rollback();

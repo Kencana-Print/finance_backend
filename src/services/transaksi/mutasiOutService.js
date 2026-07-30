@@ -37,12 +37,12 @@ const getBrowse = async (query, user) => {
             )
           ), ""
         )
-        FROM kencanaprint.tspk_pin5
+        FROM kencanaprintnew.tspk_pin5
         WHERE pin_trs="MUTASI OUT" AND pin_nomor=h.mso_nomor
         ORDER BY pin_urut DESC LIMIT 1
       ), "") AS Ngedit
 
-    FROM kencanaprint.tgarmenmso_hdr h
+    FROM kencanaprintnew.tgarmenmso_hdr h
     WHERE h.mso_tanggal >= ? AND h.mso_tanggal <= ?
   `;
 
@@ -80,8 +80,8 @@ const getBrowseDetail = async (nomorMutasi) => {
       d.msod_ket AS Spesifikasi,
       b.brg_satuan AS Satuan,
       d.msod_jumlah AS Jumlah
-    FROM kencanaprint.tgarmenmso_dtl d
-    LEFT JOIN kencanaprint.tgarmen_brg b ON d.msod_brg_kode = b.brg_kode
+    FROM kencanaprintnew.tgarmenmso_dtl d
+    LEFT JOIN kencanaprintnew.tgarmen_brg b ON d.msod_brg_kode = b.brg_kode
     WHERE d.msod_nomor = ?
     ORDER BY d.msod_urut ASC
   `;
@@ -93,7 +93,7 @@ const getBrowseDetail = async (nomorMutasi) => {
 const getZdtCloseMso = async () => {
   try {
     const [rows] = await db.query(
-      `SELECT tgl_close FROM kencanaprint.tversi WHERE aplikasi = "MANKSI" LIMIT 1`,
+      `SELECT tgl_close FROM kencanaprintnew.tversi WHERE aplikasi = "MANKSI" LIMIT 1`,
     );
 
     let ztglclose = 0;
@@ -127,7 +127,7 @@ const deleteData = async (nomor) => {
   const conn = await db.getConnection();
   try {
     const [headers] = await conn.query(
-      `SELECT mso_tanggal, mso_msi_nomor FROM kencanaprint.tgarmenmso_hdr WHERE mso_nomor = ?`,
+      `SELECT mso_tanggal, mso_msi_nomor FROM kencanaprintnew.tgarmenmso_hdr WHERE mso_nomor = ?`,
       [nomor],
     );
 
@@ -148,7 +148,7 @@ const deleteData = async (nomor) => {
     }
 
     await conn.query(
-      `DELETE FROM kencanaprint.tgarmenmso_hdr WHERE mso_nomor = ?`,
+      `DELETE FROM kencanaprintnew.tgarmenmso_hdr WHERE mso_nomor = ?`,
       [nomor],
     );
 
@@ -164,7 +164,7 @@ const requestPinEdit = async (payload, userKode) => {
   const conn = await db.getConnection();
   try {
     const [lastPin] = await conn.query(
-      `SELECT pin_urut, pin_dipakai FROM kencanaprint.tspk_pin5 WHERE pin_trs="MUTASI OUT" AND pin_nomor=? ORDER BY pin_urut DESC LIMIT 1`,
+      `SELECT pin_urut, pin_dipakai FROM kencanaprintnew.tspk_pin5 WHERE pin_trs="MUTASI OUT" AND pin_nomor=? ORDER BY pin_urut DESC LIMIT 1`,
       [nomor],
     );
 
@@ -181,7 +181,7 @@ const requestPinEdit = async (payload, userKode) => {
 
     await conn.query(
       `
-      INSERT INTO kencanaprint.tspk_pin5 (pin_trs, pin_nomor, pin_urut, pin_tgl_trs, pin_ket, pin_tgl_minta, pin_user_minta, pin_alasan)
+      INSERT INTO kencanaprintnew.tspk_pin5 (pin_trs, pin_nomor, pin_urut, pin_tgl_trs, pin_ket, pin_tgl_minta, pin_user_minta, pin_alasan)
       VALUES ("MUTASI OUT", ?, ?, ?, ?, NOW(), ?, ?)
       ON DUPLICATE KEY UPDATE
         pin_tgl_trs=VALUES(pin_tgl_trs),

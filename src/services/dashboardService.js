@@ -93,8 +93,8 @@ const getSummary = async (cabang) => {
      LEFT JOIN (
        SELECT msod_brg_kode,
          IFNULL(SUM(msod_jumlah), 0) AS mutasi
-       FROM kencanaprint.tgarmenmso_hdr h
-       INNER JOIN kencanaprint.tgarmenmso_dtl d ON d.msod_nomor = h.mso_nomor
+       FROM kencanaprintnew.tgarmenmso_hdr h
+       INNER JOIN kencanaprintnew.tgarmenmso_dtl d ON d.msod_nomor = h.mso_nomor
        WHERE h.mso_msi_nomor = '' AND h.mso_cab = ? AND h.mso_bagian = 'FINANCE'
        GROUP BY msod_brg_kode
      ) m ON m.msod_brg_kode = x.mst_brg_kode
@@ -105,7 +105,7 @@ const getSummary = async (cabang) => {
   // 8. Voucher Pembayaran belum diinputkan ke Pengajuan Transfer
   const [[voucherPtRow]] = await db.query(
     `SELECT COUNT(*) AS count, IFNULL(SUM(vou_total - IFNULL(vou_disc,0)), 0) AS total
-      FROM kencanaprint.tvoucher_hdr h
+      FROM kencanaprintnew.tvoucher_hdr h
       WHERE NOT EXISTS (
         SELECT 1
         FROM finance.tpengajuan_transfer_dtl d
@@ -124,10 +124,10 @@ const getSummary = async (cabang) => {
           ROUND(SUM(
             (d.bpbd_harga * (100 - d.bpbd_disc) / 100) * d.bpbd_jumlah *
             IF(p.po_status_ppn = 1, (100 + p.po_ppn) / 100, 1)
-          ), 2) - IFNULL((SELECT SUM(voud_total) FROM kencanaprint.tvoucher_dtl WHERE voud_nota = h.bpb_nomor), 0) AS Sisa
-        FROM kencanaprint.tbpb_hdr h
-        INNER JOIN kencanaprint.tbpb_dtl d ON d.bpbd_bpb_nomor = h.bpb_nomor
-        INNER JOIN kencanaprint.tpo_hdr p ON p.po_nomor = h.bpb_po_nomor
+          ), 2) - IFNULL((SELECT SUM(voud_total) FROM kencanaprintnew.tvoucher_dtl WHERE voud_nota = h.bpb_nomor), 0) AS Sisa
+        FROM kencanaprintnew.tbpb_hdr h
+        INNER JOIN kencanaprintnew.tbpb_dtl d ON d.bpbd_bpb_nomor = h.bpb_nomor
+        INNER JOIN kencanaprintnew.tpo_hdr p ON p.po_nomor = h.bpb_po_nomor
         GROUP BY h.bpb_nomor
         HAVING Sisa > 0
 
@@ -138,9 +138,9 @@ const getSummary = async (cabang) => {
           ROUND(
             p.pojh_tarif * h.bpj_jumlah *
             IF(p.pojh_status_ppn = 1, ((100 + p.pojh_ppn) / 100), 1)
-          , 2) - IFNULL((SELECT SUM(voud_total) FROM kencanaprint.tvoucher_dtl WHERE voud_nota = h.bpj_nomor), 0) AS Sisa
-        FROM kencanaprint.tbpj_hdr h
-        INNER JOIN kencanaprint.tpojasa_hdr p ON p.pojh_nomor = h.bpj_po_nomor
+          , 2) - IFNULL((SELECT SUM(voud_total) FROM kencanaprintnew.tvoucher_dtl WHERE voud_nota = h.bpj_nomor), 0) AS Sisa
+        FROM kencanaprintnew.tbpj_hdr h
+        INNER JOIN kencanaprintnew.tpojasa_hdr p ON p.pojh_nomor = h.bpj_po_nomor
         GROUP BY h.bpj_nomor
         HAVING Sisa > 0
 
@@ -148,9 +148,9 @@ const getSummary = async (cabang) => {
 
         -- 3. POE (PO External)
         SELECT h.poe_nomor AS Nomor,
-          (h.poe_total - IFNULL((SELECT SUM(c.poed2_nominal) FROM kencanaprint.tpoexternal_dtl2 c WHERE c.poed2_nomor = h.poe_nomor), 0))
-          - IFNULL((SELECT SUM(voud_total) FROM kencanaprint.tvoucher_dtl WHERE voud_nota = h.poe_nomor), 0) AS Sisa
-        FROM kencanaprint.tpoexternal_hdr h
+          (h.poe_total - IFNULL((SELECT SUM(c.poed2_nominal) FROM kencanaprintnew.tpoexternal_dtl2 c WHERE c.poed2_nomor = h.poe_nomor), 0))
+          - IFNULL((SELECT SUM(voud_total) FROM kencanaprintnew.tvoucher_dtl WHERE voud_nota = h.poe_nomor), 0) AS Sisa
+        FROM kencanaprintnew.tpoexternal_hdr h
         GROUP BY h.poe_nomor
         HAVING Sisa > 0
 
@@ -160,10 +160,10 @@ const getSummary = async (cabang) => {
         SELECT h.rec_nomor AS Nomor,
           IFNULL((
             SELECT SUM(IF(d.recd_harga < 200000, d.recd_harga * d.recd_qty_terima, d.recd_harga))
-            FROM kencanaprint.trec_mmt_dtl d
+            FROM kencanaprintnew.trec_mmt_dtl d
             WHERE d.recd_rec_nomor = h.rec_nomor
-          ), 0) - IFNULL((SELECT SUM(voud_total) FROM kencanaprint.tvoucher_dtl WHERE voud_nota = h.rec_nomor), 0) AS Sisa
-        FROM kencanaprint.trec_mmt_hdr h
+          ), 0) - IFNULL((SELECT SUM(voud_total) FROM kencanaprintnew.tvoucher_dtl WHERE voud_nota = h.rec_nomor), 0) AS Sisa
+        FROM kencanaprintnew.trec_mmt_hdr h
         GROUP BY h.rec_nomor
         HAVING Sisa > 0
 
@@ -171,9 +171,9 @@ const getSummary = async (cabang) => {
 
         -- 5. BPE (BPB PO External)
         SELECT h.bpe_nomor AS Nomor,
-          IFNULL(poe.poe_total, 0) - IFNULL((SELECT SUM(voud_total) FROM kencanaprint.tvoucher_dtl WHERE voud_nota = h.bpe_nomor), 0) AS Sisa
-        FROM kencanaprint.tbpbpoexternal_hdr h
-        LEFT JOIN kencanaprint.tpoexternal_hdr poe ON poe.poe_nomor = h.bpe_po
+          IFNULL(poe.poe_total, 0) - IFNULL((SELECT SUM(voud_total) FROM kencanaprintnew.tvoucher_dtl WHERE voud_nota = h.bpe_nomor), 0) AS Sisa
+        FROM kencanaprintnew.tbpbpoexternal_hdr h
+        LEFT JOIN kencanaprintnew.tpoexternal_hdr poe ON poe.poe_nomor = h.bpe_po
         GROUP BY h.bpe_nomor
         HAVING Sisa > 0
 
@@ -183,10 +183,10 @@ const getSummary = async (cabang) => {
         SELECT h.bpb_nomor AS Nomor,
           IFNULL((
             SELECT SUM(d.bpbd_jumlah * d.bpbd_harga)
-            FROM kencanaprint.tgarmenbpb_dtl d
+            FROM kencanaprintnew.tgarmenbpb_dtl d
             WHERE d.bpbd_nomor = h.bpb_nomor
-          ), 0) - IFNULL((SELECT SUM(voud_total) FROM kencanaprint.tvoucher_dtl WHERE voud_nota = h.bpb_nomor), 0) AS Sisa
-        FROM kencanaprint.tgarmenbpb_hdr h
+          ), 0) - IFNULL((SELECT SUM(voud_total) FROM kencanaprintnew.tvoucher_dtl WHERE voud_nota = h.bpb_nomor), 0) AS Sisa
+        FROM kencanaprintnew.tgarmenbpb_hdr h
         GROUP BY h.bpb_nomor
         HAVING Sisa > 0
       ) x`,
