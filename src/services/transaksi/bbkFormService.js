@@ -79,12 +79,13 @@ const getMaxNomor = async (cabang, conn) => {
 };
 
 // ── Nomor otomatis BKM/BBM ────────────────────────────────────────────
-// Delphi getnomasuk BBK: WHERE jur_no = cno (bukan MID)
 const getNomorOtomatis = async (bbkNomor, localNn, conn) => {
   const [[row]] = await (conn || db).query(
     `SELECT IFNULL(MAX(CAST(LEFT(jur_no,2) AS UNSIGNED)),0) AS max_val
-     FROM tjurnal WHERE jur_otomatis=1 AND jur_no = ?`,
-    [bbkNomor],
+     FROM tjurnal
+     WHERE jur_otomatis=1
+       AND RIGHT(jur_no, CHAR_LENGTH(?)) = ?`,
+    [bbkNomor, bbkNomor],
   );
   return String(100 + localNn + Number(row.max_val)).slice(-2) + bbkNomor;
 };
@@ -231,9 +232,12 @@ const saveData = async (payload, user) => {
     }
 
     // Delete jurnal otomatis
-    await conn.query(`DELETE FROM tjurnal WHERE jur_otomatis=1 AND jur_no=?`, [
-      actualNomor,
-    ]);
+    await conn.query(
+      `DELETE FROM tjurnal
+       WHERE jur_otomatis=1
+        AND RIGHT(jur_no, CHAR_LENGTH(?)) = ?`,
+      [actualNomor, actualNomor],
+    );
     // Delete tjurnalitem
     await conn.query(`DELETE FROM tjurnalitem WHERE jurd_jur_no=?`, [
       actualNomor,
