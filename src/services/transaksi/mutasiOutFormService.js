@@ -63,7 +63,7 @@ const getStokReal = async (
   let stokQuery = "";
   if (bagian === "FINANCE") {
     stokQuery = `SELECT IFNULL(SUM(mst_stok_in - mst_stok_out), 0) AS stk
-                 FROM finance.tmasterstok_finance
+                 FROM financenew.tmasterstok_finance
                  WHERE mst_aktif="Y" AND mst_brg_kode=? AND mst_cab=?`;
   } else {
     const tbl =
@@ -176,7 +176,7 @@ const searchBarang = async (query) => {
 
   const tblStok =
     bagian === "FINANCE"
-      ? "finance.tmasterstok_finance"
+      ? "financenew.tmasterstok_finance"
       : jenis === "ACCESORIES"
         ? "kencanaprintnew.tmasterstok_acc"
         : jenis === "OBAT"
@@ -320,7 +320,9 @@ const save = async (data, userKode, userBagian, isNewMode) => {
 };
 
 // ── Search No. Permintaan (khusus FINANCE) ────────────────────────────
-const searchPermintaanFinance = async (jenis, cabangTujuan, search) => {
+// Parameter cabangAsal = branch yang beroperasi (Cabang field di form Mutasi Out),
+// dicocokkan ke mb_mintake — yaitu cabang yang diminta untuk memenuhi permintaan.
+const searchPermintaanFinance = async (jenis, cabangAsal, search) => {
   let sql = `
     SELECT
       h.mb_jenis AS Jenis,
@@ -338,12 +340,12 @@ const searchPermintaanFinance = async (jenis, cabangTujuan, search) => {
   `;
   const params = [jenis];
 
-  // Mapping cabang: P01 di Finance = HO/HO- di data lama Manksi
-  if (cabangTujuan === "P01") {
-    sql += ` AND (h.mb_cab = 'P01' OR h.mb_cab = 'HO' OR h.mb_cab = 'HO-')`;
-  } else {
-    sql += ` AND h.mb_cab = ?`;
-    params.push(cabangTujuan);
+  // Mapping: P01 di Finance = HO/HO- di data lama Manksi
+  if (cabangAsal === "P01") {
+    sql += ` AND (h.mb_mintake = 'HO' OR h.mb_mintake = 'HO-')`;
+  } else if (cabangAsal) {
+    sql += ` AND h.mb_mintake = ?`;
+    params.push(cabangAsal);
   }
 
   if (search) {
@@ -371,7 +373,7 @@ const getDetailPermintaanFinance = async (
        k.bond2_spesifikasi AS Spesifikasi,
        IFNULL((
          SELECT SUM(m.mst_stok_in - m.mst_stok_out)
-         FROM finance.tmasterstok_finance m
+         FROM financenew.tmasterstok_finance m
          WHERE m.mst_aktif="Y" AND m.mst_cab=? AND m.mst_brg_kode=k.bond2_brg_kode
        ), 0) AS Stok,
        IFNULL((
@@ -380,7 +382,7 @@ const getDetailPermintaanFinance = async (
          INNER JOIN kencanaprintnew.tgarmenmso_dtl d ON d.msod_nomor = h.mso_nomor
          WHERE h.mso_msi_nomor="" AND h.mso_nomor <> ? AND d.msod_brg_kode=k.bond2_brg_kode
        ), 0) AS Belum
-     FROM finance.tkasbonitem2 k
+     FROM financenew.tkasbonitem2 k
      LEFT JOIN kencanaprintnew.tgarmen_brg b ON b.brg_kode = k.bond2_brg_kode
      WHERE k.bond2_link = ?`,
     [cabangAsal, nomorMso || "", noPermintaan],

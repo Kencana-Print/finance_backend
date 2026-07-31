@@ -52,10 +52,10 @@ const save = async (req, res) => {
 
 const searchPermintaanFinance = async (req, res) => {
   try {
-    const { jenis, cabangTujuan, search } = req.query;
+    const { jenis, cabangAsal, search } = req.query;
     const data = await service.searchPermintaanFinance(
       jenis,
-      cabangTujuan,
+      cabangAsal,
       search,
     );
     res.json({ success: true, data });
