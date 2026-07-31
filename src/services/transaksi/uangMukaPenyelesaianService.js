@@ -121,10 +121,10 @@ const getFormData = async (nomor) => {
       d.pmd_tanggal_buyed, d.pmd_rek_kode,
       r.rek_nama, d.pmd_cc_kode, c.cc_nama, d.pmd_dcnama
     FROM tkasbon k
-    INNER JOIN ga2.tpermintaan_dtl d ON d.pmd_bon = k.bon_nomor
-    INNER JOIN ga2.tpermintaan_hdr h ON h.pmt_nomor = d.pmd_pmt_nomor
-    INNER JOIN ga2.tpengajuan2_hdr j ON j.pjh_nomor = h.pmt_pjh_nomor
-    INNER JOIN ga2.peminta p ON p.nik = j.pjh_nik
+    INNER JOIN ga2new.tpermintaan_dtl d ON d.pmd_bon = k.bon_nomor
+    INNER JOIN ga2new.tpermintaan_hdr h ON h.pmt_nomor = d.pmd_pmt_nomor
+    INNER JOIN ga2new.tpengajuan2_hdr j ON j.pjh_nomor = h.pmt_pjh_nomor
+    INNER JOIN ga2new.peminta p ON p.nik = j.pjh_nik
     LEFT JOIN trekening r ON r.rek_kode = d.pmd_rek_kode
     LEFT JOIN tcostcenter c ON c.cc_kode = d.pmd_cc_kode
     WHERE h.pmt_approval = 1 AND d.pmd_tanggal_approved IS NOT NULL
@@ -490,8 +490,8 @@ const saveData = async (payload, user) => {
       const [[maxPjh]] = await conn.query(
         `
         SELECT IFNULL(MAX(x.nomer),0) AS max_val FROM (
-          SELECT d.pmd_nourut AS nomer FROM ga2.tpermintaan_dtl d
-          LEFT JOIN ga2.tpermintaan_hdr h ON h.pmt_nomor=d.pmd_pmt_nomor
+          SELECT d.pmd_nourut AS nomer FROM ga2new.tpermintaan_dtl d
+          LEFT JOIN ga2new.tpermintaan_hdr h ON h.pmt_nomor=d.pmd_pmt_nomor
           WHERE h.pmt_pjh_nomor=?
           UNION
           SELECT bond_nourut AS nomer FROM tkasbonitem WHERE bond_nomor=?
@@ -519,7 +519,7 @@ const saveData = async (payload, user) => {
 
       // Update pmt_approval + pmt_buyed jika pmt berubah
       if (d.pmt && d.pmt !== cpmt) {
-        let updatePmt = `UPDATE ga2.tpermintaan_hdr SET pmt_approval=1, pmt_buyed=1`;
+        let updatePmt = `UPDATE ga2new.tpermintaan_hdr SET pmt_approval=1, pmt_buyed=1`;
         if (d.gabrg === 0) updatePmt += `, pmt_close=1`;
         updatePmt += ` WHERE pmt_nomor=?`;
         await conn.query(updatePmt, [d.pmt]);
@@ -530,7 +530,7 @@ const saveData = async (payload, user) => {
       if (d.ga === 1) {
         if (!v) {
           // Tidak diverifikasi
-          let sql = `UPDATE ga2.tpermintaan_dtl SET
+          let sql = `UPDATE ga2new.tpermintaan_dtl SET
             pmd_qty_buyed=0, pmd_nilai_buyed=0, pmd_verified_buyed=0,
             pmd_bon=?`;
           if (d.gabrg === 0)
@@ -539,7 +539,7 @@ const saveData = async (payload, user) => {
           await conn.query(sql, [nomor, d.pmt, d.no]);
         } else {
           // Diverifikasi
-          let sql = `UPDATE ga2.tpermintaan_dtl SET
+          let sql = `UPDATE ga2new.tpermintaan_dtl SET
             pmd_qty_buyed=?, pmd_nilai_buyed=?, pmd_verified_buyed=?,
             pmd_rek_kode=?, pmd_cc_kode=?, pmd_dcnama=?, pmd_bon=?,
             pmd_tanggal_approved=CURDATE(), pmd_user_approved=?,
@@ -856,8 +856,8 @@ const getListPengajuanGA = async (cabang) => {
   let sql = `
     SELECT h.pmt_pjh_nomor AS nomor, DATE_FORMAT(j.pjh_tanggal,"%d-%m-%Y") AS tanggal,
       j.pjh_ke, j.pjh_user_kode AS nama, h.pmt_keterangan AS keterangan
-    FROM ga2.tpermintaan_hdr h
-    INNER JOIN ga2.tpengajuan2_hdr j ON j.pjh_nomor=h.pmt_pjh_nomor
+    FROM ga2new.tpermintaan_hdr h
+    INNER JOIN ga2new.tpengajuan2_hdr j ON j.pjh_nomor=h.pmt_pjh_nomor
     WHERE h.pmt_approval = 0
   `;
   const params = [];
@@ -879,9 +879,9 @@ const getDetailPengajuanGA = async (pjhNomor) => {
       d.pmd_kegunaan, (d.pmd_qty_riil * d.pmd_nilai) AS total, d.pmd_verified_buyed,
       h.pmt_buyed, d.pmd_nilai_terpakai, d.pmd_tanggal_approved, d.pmd_tanggal_buyed,
       j.pjh_jenis_permintaan, j.pjh_nonga
-    FROM ga2.tpermintaan_dtl d
-    INNER JOIN ga2.tpermintaan_hdr h ON h.pmt_nomor = d.pmd_pmt_nomor
-    LEFT JOIN ga2.tpengajuan2_hdr j ON j.pjh_nomor = h.pmt_pjh_nomor
+    FROM ga2new.tpermintaan_dtl d
+    INNER JOIN ga2new.tpermintaan_hdr h ON h.pmt_nomor = d.pmd_pmt_nomor
+    LEFT JOIN ga2new.tpengajuan2_hdr j ON j.pjh_nomor = h.pmt_pjh_nomor
     WHERE h.pmt_pjh_nomor = ?
     ORDER BY d.pmd_nourut`,
     [pjhNomor],

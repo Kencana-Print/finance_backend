@@ -75,7 +75,7 @@ const getMaster = async (rekkode) => {
 // ── Kasbon Belum Selesai — Detail ─────────────────────────────────────
 // Delphi SQLDetail — UNION dua sumber, filter bon_selesai=0 AND bon_jenis=0:
 //
-// Sumber 1: ga2.tpermintaan_dtl JOIN tkasbon
+// Sumber 1: ga2new.tpermintaan_dtl JOIN tkasbon
 //   Hanya untuk bon_jenis=0 (KAS)
 //   Uraian: concat(pmd_nama, " ", pmd_spesifikasi)
 //   Keterangan: "Pengajuan GA"
@@ -92,7 +92,7 @@ const getDetail = async (rekkode) => {
     `SELECT x.Nomor, x.Uraian, x.Satuan, x.Qty,
             x.Nominal, x.Total, x.Kegunaan, x.Keterangan
      FROM (
-       -- Sumber 1: Pengajuan GA (tpermintaan_dtl dari database ga2)
+       -- Sumber 1: Pengajuan GA (tpermintaan_dtl dari database ga2new)
        SELECT
          d.pmd_bon                                          AS Nomor,
          CONCAT(IFNULL(d.pmd_nama,''), ' ',
@@ -103,7 +103,7 @@ const getDetail = async (rekkode) => {
          (IFNULL(d.pmd_qty_riil,0) * IFNULL(d.pmd_nilai,0)) AS Total,
          IFNULL(d.pmd_kegunaan, '')                        AS Kegunaan,
          'Pengajuan GA'                                     AS Keterangan
-       FROM ga2.tpermintaan_dtl d
+       FROM ga2new.tpermintaan_dtl d
        INNER JOIN tkasbon b ON b.bon_nomor = d.pmd_bon
        WHERE b.bon_selesai = 0
          AND b.bon_jenis = 0
