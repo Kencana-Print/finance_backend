@@ -333,7 +333,7 @@ const searchPermintaanFinance = async (jenis, cabangAsal, search) => {
       h.user_create AS Peminta
     FROM kencanaprintnew.tgarmenmintabeli_hdr h
     WHERE h.mb_nomor IN (
-      SELECT DISTINCT c.bond2_link FROM finance.tkasbonitem2 c
+      SELECT DISTINCT c.bond2_link FROM financenew.tkasbonitem2 c
       WHERE LEFT(c.bond2_link, 2) = "MB"
     )
     AND h.mb_jenis = ?
