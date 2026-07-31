@@ -8,42 +8,12 @@ const {
 
 const menuId = 24;
 
-router.get(
-  "/account",
-  verifyToken,
-  checkPermission(menuId, "view"),
-  ctrl.getAccountOptions,
-);
-router.get(
-  "/account-all",
-  verifyToken,
-  checkPermission(menuId, "view"),
-  ctrl.getAccountAll,
-);
-router.get(
-  "/keterangan",
-  verifyToken,
-  checkPermission(menuId, "view"),
-  ctrl.getKeteranganOptions,
-);
-router.get(
-  "/cost-center",
-  verifyToken,
-  checkPermission(menuId, "view"),
-  ctrl.getCostCenterOptions,
-);
-router.get(
-  "/dc/:cckode",
-  verifyToken,
-  checkPermission(menuId, "view"),
-  ctrl.getDcOptions,
-);
-router.get(
-  "/supplier",
-  verifyToken,
-  checkPermission(menuId, "view"),
-  ctrl.getSupplierOptions,
-);
+router.get("/account", verifyToken, ctrl.getAccountOptions);
+router.get("/account-all", verifyToken, ctrl.getAccountAll);
+router.get("/keterangan", verifyToken, ctrl.getKeteranganOptions);
+router.get("/cost-center", verifyToken, ctrl.getCostCenterOptions);
+router.get("/dc/:cckode", verifyToken, ctrl.getDcOptions);
+router.get("/supplier", verifyToken, ctrl.getSupplierOptions);
 router.get(
   "/form/:nomor",
   verifyToken,
