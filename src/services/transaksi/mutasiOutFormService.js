@@ -335,9 +335,16 @@ const searchPermintaanFinance = async (jenis, cabangTujuan, search) => {
       WHERE LEFT(c.bond2_link, 2) = "MB"
     )
     AND h.mb_jenis = ?
-    AND h.mb_cab = ?
   `;
-  const params = [jenis, cabangTujuan];
+  const params = [jenis];
+
+  // Mapping cabang: P01 di Finance = HO/HO- di data lama Manksi
+  if (cabangTujuan === "P01") {
+    sql += ` AND (h.mb_cab = 'P01' OR h.mb_cab = 'HO' OR h.mb_cab = 'HO-')`;
+  } else {
+    sql += ` AND h.mb_cab = ?`;
+    params.push(cabangTujuan);
+  }
 
   if (search) {
     sql += ` AND (h.mb_nomor LIKE ? OR h.mb_ket LIKE ?)`;
