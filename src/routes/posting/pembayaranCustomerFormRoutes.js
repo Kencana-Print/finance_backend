@@ -8,7 +8,7 @@ const {
 
 const menuId = 51;
 
-// Load data dari kencanaprintnew.terima_bayar_debet
+// Load data dari kencanaprint.terima_bayar_debet
 router.get(
   "/",
   verifyToken,

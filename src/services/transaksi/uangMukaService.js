@@ -62,15 +62,15 @@ const deleteData = async (nomor, cabang) => {
   const conn = await db.getConnection();
   await conn.beginTransaction();
   try {
-    // Reset tpermintaan_hdr di DB ga2new (cross-DB)
+    // Reset tpermintaan_hdr di DB ga2 (cross-DB)
     if (bon.bon_pjh_nomor) {
       await conn.query(
-        `UPDATE ga2new.tpermintaan_hdr SET pmt_approval = 0
+        `UPDATE ga2.tpermintaan_hdr SET pmt_approval = 0
          WHERE pmt_pjh_nomor = ?`,
         [bon.bon_pjh_nomor],
       );
       await conn.query(
-        `UPDATE ga2new.tpermintaan_dtl SET
+        `UPDATE ga2.tpermintaan_dtl SET
            pmd_tanggal_approved = NULL, pmd_user_approved = '',
            pmd_bon = '', pmd_dana_approved = 0,
            pmd_user_reject = '', pmd_tanggal_reject = NULL,

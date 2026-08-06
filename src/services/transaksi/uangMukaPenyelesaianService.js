@@ -121,10 +121,10 @@ const getFormData = async (nomor) => {
       d.pmd_tanggal_buyed, d.pmd_rek_kode,
       r.rek_nama, d.pmd_cc_kode, c.cc_nama, d.pmd_dcnama
     FROM tkasbon k
-    INNER JOIN ga2new.tpermintaan_dtl d ON d.pmd_bon = k.bon_nomor
-    INNER JOIN ga2new.tpermintaan_hdr h ON h.pmt_nomor = d.pmd_pmt_nomor
-    INNER JOIN ga2new.tpengajuan2_hdr j ON j.pjh_nomor = h.pmt_pjh_nomor
-    INNER JOIN ga2new.peminta p ON p.nik = j.pjh_nik
+    INNER JOIN ga2.tpermintaan_dtl d ON d.pmd_bon = k.bon_nomor
+    INNER JOIN ga2.tpermintaan_hdr h ON h.pmt_nomor = d.pmd_pmt_nomor
+    INNER JOIN ga2.tpengajuan2_hdr j ON j.pjh_nomor = h.pmt_pjh_nomor
+    INNER JOIN ga2.peminta p ON p.nik = j.pjh_nik
     LEFT JOIN trekening r ON r.rek_kode = d.pmd_rek_kode
     LEFT JOIN tcostcenter c ON c.cc_kode = d.pmd_cc_kode
     WHERE h.pmt_approval = 1 AND d.pmd_tanggal_approved IS NOT NULL
@@ -218,8 +218,8 @@ const getFormData = async (nomor) => {
     FROM tkasbonitem2 k
     LEFT JOIN trekening r ON r.rek_kode = k.bond2_rek_kode
     LEFT JOIN tcostcenter c ON c.cc_kode = k.bond2_cc_kode
-    LEFT JOIN kencanaprintnew.tgarmenmintabeli_hdr m ON m.mb_nomor = k.bond2_link
-    LEFT JOIN kencanaprintnew.tgarmeniv_hdr v ON v.iv_nomor = k.bond2_link
+    LEFT JOIN kencanaprint.tgarmenmintabeli_hdr m ON m.mb_nomor = k.bond2_link
+    LEFT JOIN kencanaprint.tgarmeniv_hdr v ON v.iv_nomor = k.bond2_link
     WHERE k.bond2_nomor = ?
     ORDER BY k.bond2_nourut
   `,
@@ -324,7 +324,7 @@ const getVoucherNomor = async (kode, tanggal, conn) => {
   const prefix = `BYR/${kode}/${yy}`;
   const [[row]] = await (conn || db).query(
     `SELECT IFNULL(MAX(RIGHT(nomor,5)),'00000') AS mx
-     FROM kencanaprintnew.bayar_debet
+     FROM kencanaprint.bayar_debet
      WHERE LEFT(nomor,?) = ?`,
     [prefix.length, prefix],
   );
@@ -452,11 +452,11 @@ const saveData = async (payload, user) => {
     await conn.query(`DELETE FROM tkasbonitem2 WHERE bond2_nomor=?`, [nomor]);
 
     await conn.query(
-      `DELETE FROM kencanaprintnew.tpoexternal_dtl2 WHERE poed2_link=?`,
+      `DELETE FROM kencanaprint.tpoexternal_dtl2 WHERE poed2_link=?`,
       [nomor],
     );
     await conn.query(
-      `DELETE FROM kencanaprintnew.bayar_debet_detail WHERE vou_link=?`,
+      `DELETE FROM kencanaprint.bayar_debet_detail WHERE vou_link=?`,
       [nomor],
     );
 
@@ -490,8 +490,8 @@ const saveData = async (payload, user) => {
       const [[maxPjh]] = await conn.query(
         `
         SELECT IFNULL(MAX(x.nomer),0) AS max_val FROM (
-          SELECT d.pmd_nourut AS nomer FROM ga2new.tpermintaan_dtl d
-          LEFT JOIN ga2new.tpermintaan_hdr h ON h.pmt_nomor=d.pmd_pmt_nomor
+          SELECT d.pmd_nourut AS nomer FROM ga2.tpermintaan_dtl d
+          LEFT JOIN ga2.tpermintaan_hdr h ON h.pmt_nomor=d.pmd_pmt_nomor
           WHERE h.pmt_pjh_nomor=?
           UNION
           SELECT bond_nourut AS nomer FROM tkasbonitem WHERE bond_nomor=?
@@ -519,7 +519,7 @@ const saveData = async (payload, user) => {
 
       // Update pmt_approval + pmt_buyed jika pmt berubah
       if (d.pmt && d.pmt !== cpmt) {
-        let updatePmt = `UPDATE ga2new.tpermintaan_hdr SET pmt_approval=1, pmt_buyed=1`;
+        let updatePmt = `UPDATE ga2.tpermintaan_hdr SET pmt_approval=1, pmt_buyed=1`;
         if (d.gabrg === 0) updatePmt += `, pmt_close=1`;
         updatePmt += ` WHERE pmt_nomor=?`;
         await conn.query(updatePmt, [d.pmt]);
@@ -530,7 +530,7 @@ const saveData = async (payload, user) => {
       if (d.ga === 1) {
         if (!v) {
           // Tidak diverifikasi
-          let sql = `UPDATE ga2new.tpermintaan_dtl SET
+          let sql = `UPDATE ga2.tpermintaan_dtl SET
             pmd_qty_buyed=0, pmd_nilai_buyed=0, pmd_verified_buyed=0,
             pmd_bon=?`;
           if (d.gabrg === 0)
@@ -539,7 +539,7 @@ const saveData = async (payload, user) => {
           await conn.query(sql, [nomor, d.pmt, d.no]);
         } else {
           // Diverifikasi
-          let sql = `UPDATE ga2new.tpermintaan_dtl SET
+          let sql = `UPDATE ga2.tpermintaan_dtl SET
             pmd_qty_buyed=?, pmd_nilai_buyed=?, pmd_verified_buyed=?,
             pmd_rek_kode=?, pmd_cc_kode=?, pmd_dcnama=?, pmd_bon=?,
             pmd_tanggal_approved=CURDATE(), pmd_user_approved=?,
@@ -661,7 +661,7 @@ const saveData = async (payload, user) => {
 
             // Catatan: totalTerpakai digunakan di sini untuk menggantikan xrpvou dari Delphi
             await conn.query(
-              `INSERT INTO kencanaprintnew.bayar_debet 
+              `INSERT INTO kencanaprint.bayar_debet 
                 (nomor, kode, account, tanggal, tanggal_tempo, total, kodeuser) 
                VALUES (?, ?, ?, ?, ?, ?, ?) 
                ON DUPLICATE KEY UPDATE total=?`,
@@ -681,7 +681,7 @@ const saveData = async (payload, user) => {
 
           // Insert detail bayar_debet_detail
           await conn.query(
-            `INSERT INTO kencanaprintnew.bayar_debet_detail (nomor, vou_nomor, vou_link, nilai) 
+            `INSERT INTO kencanaprint.bayar_debet_detail (nomor, vou_nomor, vou_link, nilai) 
              VALUES (?, ?, ?, ?)`,
             [currentByrVoucher, d.pjh, nomor, d.total],
           );
@@ -690,7 +690,7 @@ const saveData = async (payload, user) => {
         // 2. Logika PO External (POE)
         if (v && cpjh3 === "POE") {
           await conn.query(
-            `INSERT INTO kencanaprintnew.tpoexternal_dtl2 
+            `INSERT INTO kencanaprint.tpoexternal_dtl2 
               (poed2_nomor, poed2_tanggal, poed2_nominal, poed2_akun, poed2_link) 
              VALUES (?, ?, ?, ?, ?)`,
             [d.pjh, tgl_bkk, d.total, rek_kode, nomor],
@@ -856,8 +856,8 @@ const getListPengajuanGA = async (cabang) => {
   let sql = `
     SELECT h.pmt_pjh_nomor AS nomor, DATE_FORMAT(j.pjh_tanggal,"%d-%m-%Y") AS tanggal,
       j.pjh_ke, j.pjh_user_kode AS nama, h.pmt_keterangan AS keterangan
-    FROM ga2new.tpermintaan_hdr h
-    INNER JOIN ga2new.tpengajuan2_hdr j ON j.pjh_nomor=h.pmt_pjh_nomor
+    FROM ga2.tpermintaan_hdr h
+    INNER JOIN ga2.tpengajuan2_hdr j ON j.pjh_nomor=h.pmt_pjh_nomor
     WHERE h.pmt_approval = 0
   `;
   const params = [];
@@ -879,9 +879,9 @@ const getDetailPengajuanGA = async (pjhNomor) => {
       d.pmd_kegunaan, (d.pmd_qty_riil * d.pmd_nilai) AS total, d.pmd_verified_buyed,
       h.pmt_buyed, d.pmd_nilai_terpakai, d.pmd_tanggal_approved, d.pmd_tanggal_buyed,
       j.pjh_jenis_permintaan, j.pjh_nonga
-    FROM ga2new.tpermintaan_dtl d
-    INNER JOIN ga2new.tpermintaan_hdr h ON h.pmt_nomor = d.pmd_pmt_nomor
-    LEFT JOIN ga2new.tpengajuan2_hdr j ON j.pjh_nomor = h.pmt_pjh_nomor
+    FROM ga2.tpermintaan_dtl d
+    INNER JOIN ga2.tpermintaan_hdr h ON h.pmt_nomor = d.pmd_pmt_nomor
+    LEFT JOIN ga2.tpengajuan2_hdr j ON j.pjh_nomor = h.pmt_pjh_nomor
     WHERE h.pmt_pjh_nomor = ?
     ORDER BY d.pmd_nourut`,
     [pjhNomor],
@@ -934,10 +934,10 @@ const getListPoExternal = async () => {
     FROM (
       SELECT h.poe_nomor AS Nomor, h.poe_tanggal AS Tanggal, h.poe_spk_nomor AS SPK,
         h.poe_sup AS Kdsup, u.Sup_nama AS Supplier, h.poe_total AS Nominal,
-        (SELECT IFNULL(SUM(c.poed2_nominal),0) FROM kencanaprintnew.tpoexternal_dtl2 c WHERE c.poed2_nomor=h.poe_nomor) AS DP,
-        (SELECT IFNULL(SUM(v.voud_total),0) FROM kencanaprintnew.tvoucher_dtl v WHERE v.voud_nota=h.poe_nomor) AS Voucher
-      FROM kencanaprintnew.tpoexternal_hdr h
-      LEFT JOIN kencanaprintnew.tsupplier u ON u.Sup_kode = h.poe_sup
+        (SELECT IFNULL(SUM(c.poed2_nominal),0) FROM kencanaprint.tpoexternal_dtl2 c WHERE c.poed2_nomor=h.poe_nomor) AS DP,
+        (SELECT IFNULL(SUM(v.voud_total),0) FROM kencanaprint.tvoucher_dtl v WHERE v.voud_nota=h.poe_nomor) AS Voucher
+      FROM kencanaprint.tpoexternal_hdr h
+      LEFT JOIN kencanaprint.tsupplier u ON u.Sup_kode = h.poe_sup
     ) x
     WHERE (x.Nominal - (x.DP + x.Voucher)) > 0 
     ORDER BY x.Tanggal DESC, x.Nomor DESC
@@ -953,9 +953,9 @@ const getListVoucher = async () => {
   const [rows] = await db.query(`
     SELECT h.vou_nomor AS nomor, DATE_FORMAT(h.vou_tanggal, "%d-%m-%Y") AS tanggal, 
            s.sup_nama AS supplier, h.vou_total AS total
-    FROM kencanaprintnew.tvoucher_hdr h
-    INNER JOIN kencanaprintnew.tsupplier s ON s.sup_kode = h.vou_sup_kode
-    WHERE h.vou_nomor NOT IN (SELECT b.vou_nomor FROM kencanaprintnew.bayar_debet_detail b)
+    FROM kencanaprint.tvoucher_hdr h
+    INNER JOIN kencanaprint.tsupplier s ON s.sup_kode = h.vou_sup_kode
+    WHERE h.vou_nomor NOT IN (SELECT b.vou_nomor FROM kencanaprint.bayar_debet_detail b)
     ORDER BY h.vou_tanggal DESC, h.vou_nomor DESC
   `);
   return rows.map((r) => ({
@@ -970,9 +970,9 @@ const getListPermintaanGarmen = async (cabang) => {
     SELECT h.mb_nomor AS nomor, DATE_FORMAT(h.mb_tanggal, "%d-%m-%Y") AS tanggal, h.mb_jenis AS jenis,
       h.mb_ket AS keterangan, h.mb_priority AS priority, h.mb_cab AS cab,
       h.user_create AS usr, h.mb_bagian AS bagian
-    FROM kencanaprintnew.tgarmenmintabeli_hdr h
+    FROM kencanaprint.tgarmenmintabeli_hdr h
     WHERE h.mb_status <> 'CLOSE' AND h.mb_status <> 'DICLOSE'
-      AND h.mb_nomor NOT IN (SELECT po_mb_nomor FROM kencanaprintnew.tgarmenpo_hdr p WHERE po_mb_nomor <> '')
+      AND h.mb_nomor NOT IN (SELECT po_mb_nomor FROM kencanaprint.tgarmenpo_hdr p WHERE po_mb_nomor <> '')
   `;
   const params = [];
   if (cabang === "P01") {
@@ -995,9 +995,9 @@ const getDetailPermintaanGarmen = async (mbNomor) => {
          CONCAT(IFNULL(b.brg_nama,''), ' ', IFNULL(d.mbd_ket,'')), 
          CONCAT(IFNULL(b.brg_nama,''), ' - ', b.brg_note, ' ', IFNULL(d.mbd_ket,''))
       ) AS nama
-    FROM kencanaprintnew.tgarmenmintabeli_dtl d
-    LEFT JOIN kencanaprintnew.tgarmenmintabeli_hdr h ON h.mb_nomor = d.mbd_nomor
-    LEFT JOIN kencanaprintnew.tgarmen_brg b ON b.brg_kode = d.mbd_brg_kode
+    FROM kencanaprint.tgarmenmintabeli_dtl d
+    LEFT JOIN kencanaprint.tgarmenmintabeli_hdr h ON h.mb_nomor = d.mbd_nomor
+    LEFT JOIN kencanaprint.tgarmen_brg b ON b.brg_kode = d.mbd_brg_kode
     WHERE d.mbd_nomor = ?
     ORDER BY d.mbd_nourut`,
     [mbNomor],
@@ -1041,9 +1041,9 @@ const getDetailPermintaanGarmen = async (mbNomor) => {
 const getListInvoiceGarmen = async () => {
   const [rows] = await db.query(`
     SELECT h.iv_jenis AS jenis, h.iv_nomor AS invoice, DATE_FORMAT(h.iv_tanggal, "%d-%m-%Y") AS tanggal,
-      (SELECT IFNULL(bpb_po_nomor,"") FROM kencanaprintnew.tgarmenbpb_hdr b WHERE b.bpb_nomor=h.iv_bpb_nomor LIMIT 1) AS nopo,
+      (SELECT IFNULL(bpb_po_nomor,"") FROM kencanaprint.tgarmenbpb_hdr b WHERE b.bpb_nomor=h.iv_bpb_nomor LIMIT 1) AS nopo,
       h.iv_bpb_nomor AS nobpb
-    FROM kencanaprintnew.tgarmeniv_hdr h
+    FROM kencanaprint.tgarmeniv_hdr h
     WHERE h.iv_bbk = ""
     ORDER BY h.iv_tanggal DESC, h.iv_nomor DESC
   `); // 👈 Ubah urutan DESC
@@ -1058,11 +1058,11 @@ const getDetailInvoiceGarmen = async (ivNomor) => {
          b.brg_nama, 
          CONCAT(IFNULL(b.brg_nama,''), ' - ', b.brg_note)
       ) AS nama
-    FROM kencanaprintnew.tgarmeniv_dtl d
-    LEFT JOIN kencanaprintnew.tgarmeniv_hdr h ON h.iv_nomor = d.ivd_nomor
-    LEFT JOIN kencanaprintnew.tgarmenbpb_hdr m ON m.bpb_nomor = h.iv_bpb_nomor
-    LEFT JOIN kencanaprintnew.tgarmen_brg b ON b.brg_kode = d.ivd_brg_kode
-    LEFT JOIN kencanaprintnew.tsupplier s ON s.sup_kode = h.iv_sup_kode
+    FROM kencanaprint.tgarmeniv_dtl d
+    LEFT JOIN kencanaprint.tgarmeniv_hdr h ON h.iv_nomor = d.ivd_nomor
+    LEFT JOIN kencanaprint.tgarmenbpb_hdr m ON m.bpb_nomor = h.iv_bpb_nomor
+    LEFT JOIN kencanaprint.tgarmen_brg b ON b.brg_kode = d.ivd_brg_kode
+    LEFT JOIN kencanaprint.tsupplier s ON s.sup_kode = h.iv_sup_kode
     WHERE d.ivd_nomor = ?
     ORDER BY d.ivd_nourut`,
     [ivNomor],
@@ -1109,7 +1109,7 @@ const getDetailInvoiceGarmen = async (ivNomor) => {
 // ── Generate kode supplier baru: S + 7 digit ──────────────────────────
 const generateSupplierKode = async (conn) => {
   const [[row]] = await (conn || db).query(
-    'SELECT IFNULL(MAX(RIGHT(sup_kode, 7)), 0) AS max_val FROM kencanaprintnew.tsupplier WHERE LEFT(sup_kode, 1) = "S"',
+    'SELECT IFNULL(MAX(RIGHT(sup_kode, 7)), 0) AS max_val FROM kencanaprint.tsupplier WHERE LEFT(sup_kode, 1) = "S"',
   );
   const nextNum = parseInt(row.max_val, 10) + 1;
   return "S" + String(nextNum).padStart(7, "0");
@@ -1124,7 +1124,7 @@ const createSupplier = async (data, user) => {
     const kode = await generateSupplierKode(conn);
 
     await conn.query(
-      `INSERT INTO kencanaprintnew.tsupplier (
+      `INSERT INTO kencanaprint.tsupplier (
         sup_kode, sup_nama, sup_alamat, sup_kota, sup_telp, sup_hp, sup_fax, sup_cp,
         sup_npwp, sup_nama_npwp, sup_alamat_npwp, sup_kota_npwp, sup_top, sup_targetmitra,
         sup_ket, sup_bahan, sup_cmt, sup_accesories, sup_obat, sup_sparepart, sup_atk, sup_jasa,
@@ -1166,7 +1166,7 @@ const createSupplier = async (data, user) => {
 
       if (detailVals.length > 0) {
         await conn.query(
-          "INSERT INTO kencanaprintnew.tsupplieritem (supd_kode, supd_bank, supd_rekening, supd_atasnama) VALUES ?",
+          "INSERT INTO kencanaprint.tsupplieritem (supd_kode, supd_bank, supd_rekening, supd_atasnama) VALUES ?",
           [detailVals],
         );
       }

@@ -23,10 +23,10 @@ const getBrowse = async (startDate, endDate) => {
           h.bpb_sup_kode AS SupKode,
           s.sup_nama AS Nama,
           ROUND(SUM((d.bpbd_harga * (100 - d.bpbd_disc) / 100) * d.bpbd_jumlah * IF(p.po_status_ppn = 1, (100 + p.po_ppn) / 100, 1)), 2) AS Total
-        FROM kencanaprintnew.tbpb_hdr h
-        INNER JOIN kencanaprintnew.tbpb_dtl d ON d.bpbd_bpb_nomor = h.bpb_nomor
-        INNER JOIN kencanaprintnew.tpo_hdr p ON p.po_nomor = h.bpb_po_nomor
-        INNER JOIN kencanaprintnew.tsupplier s ON s.sup_kode = h.bpb_sup_kode
+        FROM kencanaprint.tbpb_hdr h
+        INNER JOIN kencanaprint.tbpb_dtl d ON d.bpbd_bpb_nomor = h.bpb_nomor
+        INNER JOIN kencanaprint.tpo_hdr p ON p.po_nomor = h.bpb_po_nomor
+        INNER JOIN kencanaprint.tsupplier s ON s.sup_kode = h.bpb_sup_kode
         WHERE h.bpb_tanggal >= ? AND h.bpb_tanggal <= ?
         GROUP BY h.bpb_nomor
 
@@ -41,9 +41,9 @@ const getBrowse = async (startDate, endDate) => {
           h.bpj_sup_kode AS SupKode,
           s.sup_nama AS Nama,
           ROUND(p.pojh_tarif * h.bpj_jumlah * IF(p.pojh_status_ppn = 1, ((100 + p.pojh_ppn) / 100), 1), 2) AS Total
-        FROM kencanaprintnew.tbpj_hdr h
-        INNER JOIN kencanaprintnew.tpojasa_hdr p ON p.pojh_nomor = h.bpj_po_nomor
-        INNER JOIN kencanaprintnew.tsupplier s ON s.sup_kode = h.bpj_sup_kode
+        FROM kencanaprint.tbpj_hdr h
+        INNER JOIN kencanaprint.tpojasa_hdr p ON p.pojh_nomor = h.bpj_po_nomor
+        INNER JOIN kencanaprint.tsupplier s ON s.sup_kode = h.bpj_sup_kode
         WHERE h.bpj_tanggal >= ? AND h.bpj_tanggal <= ?
         GROUP BY h.bpj_nomor
 
@@ -58,9 +58,9 @@ const getBrowse = async (startDate, endDate) => {
           h.ret_sup_kode AS SupKode,
           s.sup_nama AS Nama,
           ROUND(SUM(d.retd_harga * d.retd_jumlah * IF(h.ret_sts_ppn = 1, ((100 + h.ret_ppn) / 100), 1)), 2) AS Total
-        FROM kencanaprintnew.tret_hdr h
-        INNER JOIN kencanaprintnew.tret_dtl d ON d.retd_ret_nomor = h.ret_nomor
-        INNER JOIN kencanaprintnew.tsupplier s ON s.sup_kode = h.ret_sup_kode
+        FROM kencanaprint.tret_hdr h
+        INNER JOIN kencanaprint.tret_dtl d ON d.retd_ret_nomor = h.ret_nomor
+        INNER JOIN kencanaprint.tsupplier s ON s.sup_kode = h.ret_sup_kode
         WHERE h.ret_tanggal >= ? AND h.ret_tanggal <= ?
         GROUP BY h.ret_nomor
 
@@ -75,9 +75,9 @@ const getBrowse = async (startDate, endDate) => {
           h.pojh_sup_kode AS SupKode,
           s.sup_nama AS Nama,
           ROUND(SUM(d.pojd_harga * d.pojd_jumlah), 2) AS Total
-        FROM kencanaprintnew.tpojasa_hdr h
-        INNER JOIN kencanaprintnew.tpojasa_dtl d ON d.pojd_pojh_nomor = h.pojh_nomor
-        INNER JOIN kencanaprintnew.tsupplier s ON s.sup_kode = h.pojh_sup_kode
+        FROM kencanaprint.tpojasa_hdr h
+        INNER JOIN kencanaprint.tpojasa_dtl d ON d.pojd_pojh_nomor = h.pojh_nomor
+        INNER JOIN kencanaprint.tsupplier s ON s.sup_kode = h.pojh_sup_kode
         WHERE h.pojh_tanggal >= ? AND h.pojh_tanggal <= ?
         GROUP BY h.pojh_nomor
 
@@ -91,9 +91,9 @@ const getBrowse = async (startDate, endDate) => {
           DATE_FORMAT(h.poe_tanggal, '%Y-%m-%d') AS JatuhTempo,
           h.poe_sup AS SupKode,
           s.sup_nama AS Nama,
-          ROUND((h.poe_total - IFNULL((SELECT SUM(c.poed2_nominal) FROM kencanaprintnew.tpoexternal_dtl2 c WHERE c.poed2_nomor = h.poe_nomor), 0)), 2) AS Total
-        FROM kencanaprintnew.tpoexternal_hdr h
-        INNER JOIN kencanaprintnew.tsupplier s ON s.sup_kode = h.poe_sup
+          ROUND((h.poe_total - IFNULL((SELECT SUM(c.poed2_nominal) FROM kencanaprint.tpoexternal_dtl2 c WHERE c.poed2_nomor = h.poe_nomor), 0)), 2) AS Total
+        FROM kencanaprint.tpoexternal_hdr h
+        INNER JOIN kencanaprint.tsupplier s ON s.sup_kode = h.poe_sup
         WHERE h.poe_tanggal >= ? AND h.poe_tanggal <= ?
         GROUP BY h.poe_nomor
 
@@ -107,9 +107,9 @@ const getBrowse = async (startDate, endDate) => {
           DATE_FORMAT(h.rec_tanggal, '%Y-%m-%d') AS JatuhTempo,
           h.rec_sup_kode AS SupKode,
           s.sup_nama AS Nama,
-          ROUND(IFNULL((SELECT SUM(IF(d.recd_harga < 200000, d.recd_harga * d.recd_qty_terima, d.recd_harga)) FROM kencanaprintnew.trec_mmt_dtl d WHERE d.recd_rec_nomor = h.rec_nomor), 0), 2) AS Total
-        FROM kencanaprintnew.trec_mmt_hdr h
-        INNER JOIN kencanaprintnew.tsupplier s ON s.sup_kode = h.rec_sup_kode
+          ROUND(IFNULL((SELECT SUM(IF(d.recd_harga < 200000, d.recd_harga * d.recd_qty_terima, d.recd_harga)) FROM kencanaprint.trec_mmt_dtl d WHERE d.recd_rec_nomor = h.rec_nomor), 0), 2) AS Total
+        FROM kencanaprint.trec_mmt_hdr h
+        INNER JOIN kencanaprint.tsupplier s ON s.sup_kode = h.rec_sup_kode
         WHERE h.rec_tanggal >= ? AND h.rec_tanggal <= ?
         GROUP BY h.rec_nomor
 
@@ -124,9 +124,9 @@ const getBrowse = async (startDate, endDate) => {
           h.bpe_sup AS SupKode,
           s.sup_nama AS Nama,
           ROUND(IFNULL(poe.poe_total, 0), 2) AS Total
-        FROM kencanaprintnew.tbpbpoexternal_hdr h
-        INNER JOIN kencanaprintnew.tsupplier s ON s.sup_kode = h.bpe_sup
-        LEFT JOIN kencanaprintnew.tpoexternal_hdr poe ON poe.poe_nomor = h.bpe_po
+        FROM kencanaprint.tbpbpoexternal_hdr h
+        INNER JOIN kencanaprint.tsupplier s ON s.sup_kode = h.bpe_sup
+        LEFT JOIN kencanaprint.tpoexternal_hdr poe ON poe.poe_nomor = h.bpe_po
         WHERE h.bpe_tanggal >= ? AND h.bpe_tanggal <= ?
         GROUP BY h.bpe_nomor
 
@@ -140,23 +140,23 @@ const getBrowse = async (startDate, endDate) => {
           DATE_FORMAT(h.bpb_tanggal, '%Y-%m-%d') AS JatuhTempo,
           h.bpb_sup_kode AS SupKode,
           s.sup_nama AS Nama,
-          ROUND(IFNULL((SELECT SUM(d.bpbd_jumlah * d.bpbd_harga) FROM kencanaprintnew.tgarmenbpb_dtl d WHERE d.bpbd_nomor = h.bpb_nomor), 0), 2) AS Total
-        FROM kencanaprintnew.tgarmenbpb_hdr h
-        INNER JOIN kencanaprintnew.tsupplier s ON s.sup_kode = h.bpb_sup_kode
+          ROUND(IFNULL((SELECT SUM(d.bpbd_jumlah * d.bpbd_harga) FROM kencanaprint.tgarmenbpb_dtl d WHERE d.bpbd_nomor = h.bpb_nomor), 0), 2) AS Total
+        FROM kencanaprint.tgarmenbpb_hdr h
+        INNER JOIN kencanaprint.tsupplier s ON s.sup_kode = h.bpb_sup_kode
         WHERE h.bpb_tanggal >= ? AND h.bpb_tanggal <= ?
         GROUP BY h.bpb_nomor
      ) x
      LEFT JOIN (
         -- Hitung total pembentukan voucher berdasarkan nota
         SELECT voud_nota, SUM(voud_total) AS TotalVoucher 
-        FROM kencanaprintnew.tvoucher_dtl 
+        FROM kencanaprint.tvoucher_dtl 
         GROUP BY voud_nota
      ) v ON v.voud_nota = x.Nomor
      LEFT JOIN (
         -- Hitung total realisasi pembayaran kas/bank dari voucher terkait
         SELECT vd.voud_nota, SUM(bd.nilai) AS TotalBayar
-        FROM kencanaprintnew.bayar_debet_detail bd
-        INNER JOIN kencanaprintnew.tvoucher_dtl vd ON vd.voud_vou_nomor = bd.vou_nomor
+        FROM kencanaprint.bayar_debet_detail bd
+        INNER JOIN kencanaprint.tvoucher_dtl vd ON vd.voud_vou_nomor = bd.vou_nomor
         GROUP BY vd.voud_nota
      ) b ON b.voud_nota = x.Nomor
      ORDER BY x.Tanggal ASC, x.Nomor ASC`,
@@ -191,25 +191,25 @@ const getDetail = async (startDate, endDate) => {
        DATE_FORMAT(vh.vou_tanggal, '%Y-%m-%d') AS TanggalVoucher,
        vd.voud_total AS Total,
        vh.vou_status_realisasi AS StatusRealisasi
-     FROM kencanaprintnew.tvoucher_hdr vh
-     INNER JOIN kencanaprintnew.tvoucher_dtl vd ON vd.voud_vou_nomor = vh.vou_nomor
+     FROM kencanaprint.tvoucher_hdr vh
+     INNER JOIN kencanaprint.tvoucher_dtl vd ON vd.voud_vou_nomor = vh.vou_nomor
      WHERE vd.voud_nota IN (
        -- Ambil daftar semua nomor transaksi dalam rentang tanggal terkait
-       SELECT bpb_nomor FROM kencanaprintnew.tbpb_hdr WHERE bpb_tanggal >= ? AND bpb_tanggal <= ?
+       SELECT bpb_nomor FROM kencanaprint.tbpb_hdr WHERE bpb_tanggal >= ? AND bpb_tanggal <= ?
        UNION
-       SELECT bpj_nomor FROM kencanaprintnew.tbpj_hdr WHERE bpj_tanggal >= ? AND bpj_tanggal <= ?
+       SELECT bpj_nomor FROM kencanaprint.tbpj_hdr WHERE bpj_tanggal >= ? AND bpj_tanggal <= ?
        UNION
-       SELECT ret_nomor FROM kencanaprintnew.tret_hdr WHERE ret_tanggal >= ? AND ret_tanggal <= ?
+       SELECT ret_nomor FROM kencanaprint.tret_hdr WHERE ret_tanggal >= ? AND ret_tanggal <= ?
        UNION
-       SELECT pojh_nomor FROM kencanaprintnew.tpojasa_hdr WHERE pojh_tanggal >= ? AND pojh_tanggal <= ?
+       SELECT pojh_nomor FROM kencanaprint.tpojasa_hdr WHERE pojh_tanggal >= ? AND pojh_tanggal <= ?
        UNION
-       SELECT poe_nomor FROM kencanaprintnew.tpoexternal_hdr WHERE poe_tanggal >= ? AND poe_tanggal <= ?
+       SELECT poe_nomor FROM kencanaprint.tpoexternal_hdr WHERE poe_tanggal >= ? AND poe_tanggal <= ?
        UNION
-       SELECT rec_nomor FROM kencanaprintnew.trec_mmt_hdr WHERE rec_tanggal >= ? AND rec_tanggal <= ?
+       SELECT rec_nomor FROM kencanaprint.trec_mmt_hdr WHERE rec_tanggal >= ? AND rec_tanggal <= ?
        UNION
-       SELECT bpe_nomor FROM kencanaprintnew.tbpbpoexternal_hdr WHERE bpe_tanggal >= ? AND bpe_tanggal <= ?
+       SELECT bpe_nomor FROM kencanaprint.tbpbpoexternal_hdr WHERE bpe_tanggal >= ? AND bpe_tanggal <= ?
        UNION
-       SELECT bpb_nomor FROM kencanaprintnew.tgarmenbpb_hdr WHERE bpb_tanggal >= ? AND bpb_tanggal <= ?
+       SELECT bpb_nomor FROM kencanaprint.tgarmenbpb_hdr WHERE bpb_tanggal >= ? AND bpb_tanggal <= ?
      )
      ORDER BY vd.voud_nota ASC, vh.vou_tanggal ASC`,
     [

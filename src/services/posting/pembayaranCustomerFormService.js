@@ -29,7 +29,7 @@ const getAccountKredit = (jenis, nomor, uraian) => {
 
 // ── Get data untuk posting ────────────────────────────────────────────
 // Delphi btnRefreshClick:
-//   Source: kencanaprintnew.terima_bayar_debet
+//   Source: kencanaprint.terima_bayar_debet
 //   Filter: kode IN ('BT','CS','BG') + date range
 //   JOIN trekening (di finance DB) via tb_rek_kode
 // Status: cek apakah sudah ada di tjurnal (jur_otomatis=2 AND jur_nomor=nomor)
@@ -51,7 +51,7 @@ const getDataPosting = async (startDate, endDate) => {
            WHERE j.jur_otomatis = 2 AND j.jur_nomor = a.nomor
          ), 'Sudah', ''
        )                                   AS Status
-     FROM kencanaprintnew.terima_bayar_debet a
+     FROM kencanaprint.terima_bayar_debet a
      LEFT JOIN trekening r ON r.rek_kode = a.tb_rek_kode
      WHERE a.kode IN ('BT', 'CS', 'BG')
        AND a.tanggal >= ?

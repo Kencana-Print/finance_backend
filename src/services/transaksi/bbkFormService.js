@@ -58,8 +58,8 @@ const getSupplierOptions = async (search = "") => {
     `SELECT sup_kode AS kode, sup_nama AS nama,
             supd_bank AS bank, supd_rekening AS rekening,
             supd_atasnama AS atasnama
-     FROM kencanaprintnew.tsupplier
-     LEFT JOIN kencanaprintnew.tsupplieritem ON supd_kode = sup_kode
+     FROM kencanaprint.tsupplier
+     LEFT JOIN kencanaprint.tsupplieritem ON supd_kode = sup_kode
      WHERE sup_aktif = 'Y' AND (sup_nama LIKE ? OR sup_kode LIKE ?)
      ORDER BY sup_nama LIMIT 50`,
     [`%${search}%`, `%${search}%`],
