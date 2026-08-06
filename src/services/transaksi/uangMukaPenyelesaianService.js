@@ -978,7 +978,8 @@ const getListPermintaanGarmen = async (cabang) => {
   if (cabang === "P01") {
     sql += ` AND (h.mb_mintake = 'HO' OR h.mb_mintake = 'HO-')`;
   } else if (cabang) {
-    sql += ` AND h.mb_mintake = ?`;
+    // Ubah filter dari mb_mintake menjadi mb_cab
+    sql += ` AND h.mb_cab = ?`;
     params.push(cabang);
   }
   sql += ` ORDER BY h.mb_tanggal DESC, h.mb_nomor DESC`; // 👈 Ubah urutan DESC
