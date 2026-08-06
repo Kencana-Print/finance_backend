@@ -63,7 +63,7 @@ const getStokReal = async (
   let stokQuery = "";
   if (bagian === "FINANCE") {
     stokQuery = `SELECT IFNULL(SUM(mst_stok_in - mst_stok_out), 0) AS stk
-                 FROM financenew.tmasterstok_finance
+                 FROM finance.tmasterstok_finance
                  WHERE mst_aktif="Y" AND mst_brg_kode=? AND mst_cab=?`;
   } else {
     const tbl =
@@ -176,7 +176,7 @@ const searchBarang = async (query) => {
 
   const tblStok =
     bagian === "FINANCE"
-      ? "financenew.tmasterstok_finance"
+      ? "finance.tmasterstok_finance"
       : jenis === "ACCESORIES"
         ? "kencanaprint.tmasterstok_acc"
         : jenis === "OBAT"
@@ -333,7 +333,7 @@ const searchPermintaanFinance = async (jenis, cabangAsal, search) => {
       h.user_create AS Peminta
     FROM kencanaprint.tgarmenmintabeli_hdr h
     WHERE h.mb_nomor IN (
-      SELECT DISTINCT c.bond2_link FROM financenew.tkasbonitem2 c
+      SELECT DISTINCT c.bond2_link FROM finance.tkasbonitem2 c
       WHERE LEFT(c.bond2_link, 2) = "MB"
     )
     AND h.mb_jenis = ?
@@ -373,7 +373,7 @@ const getDetailPermintaanFinance = async (
        k.bond2_spesifikasi AS Spesifikasi,
        IFNULL((
          SELECT SUM(m.mst_stok_in - m.mst_stok_out)
-         FROM financenew.tmasterstok_finance m
+         FROM finance.tmasterstok_finance m
          WHERE m.mst_aktif="Y" AND m.mst_cab=? AND m.mst_brg_kode=k.bond2_brg_kode
        ), 0) AS Stok,
        IFNULL((
@@ -382,7 +382,7 @@ const getDetailPermintaanFinance = async (
          INNER JOIN kencanaprint.tgarmenmso_dtl d ON d.msod_nomor = h.mso_nomor
          WHERE h.mso_msi_nomor="" AND h.mso_nomor <> ? AND d.msod_brg_kode=k.bond2_brg_kode
        ), 0) AS Belum
-     FROM financenew.tkasbonitem2 k
+     FROM finance.tkasbonitem2 k
      LEFT JOIN kencanaprint.tgarmen_brg b ON b.brg_kode = k.bond2_brg_kode
      WHERE k.bond2_link = ?`,
     [cabangAsal, nomorMso || "", noPermintaan],

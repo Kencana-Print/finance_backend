@@ -7,14 +7,14 @@ const getCabangList = async () => {
   const [rows] = await db.query(
     `SELECT DISTINCT cab FROM (
        SELECT mst_cab AS cab
-       FROM financenew.tmasterstok_finance
+       FROM finance.tmasterstok_finance
        UNION
        SELECT mso_cab AS cab
        FROM kencanaprint.tgarmenmso_hdr
        WHERE mso_bagian = 'FINANCE'
        UNION
        SELECT cabang AS cab
-       FROM financenew.tcabang
+       FROM finance.tcabang
      ) x
      ORDER BY cab`,
   );
@@ -63,7 +63,7 @@ const getMaster = async (cabang) => {
          -- Stok: SUM in-out dari tmasterstok_finance per barang+cabang
          IFNULL((
            SELECT SUM(m.mst_stok_in - m.mst_stok_out)
-           FROM financenew.tmasterstok_finance m
+           FROM finance.tmasterstok_finance m
            WHERE m.mst_aktif    = 'Y'
              AND m.mst_cab      = ?
              AND m.mst_brg_kode = b.brg_kode
@@ -90,7 +90,7 @@ const getMaster = async (cabang) => {
            SELECT
              m.mst_brg_kode,
              SUM(m.mst_stok_in - m.mst_stok_out) AS stk
-           FROM financenew.tmasterstok_finance m
+           FROM finance.tmasterstok_finance m
            WHERE m.mst_aktif = 'Y'
              AND m.mst_cab   = ?
            GROUP BY m.mst_brg_kode
@@ -118,7 +118,7 @@ const getDetail = async (cabang) => {
        m.mst_stok_in                           AS StokIn,
        m.mst_stok_out                          AS StokOut,
        (m.mst_stok_in - m.mst_stok_out)        AS Selisih
-     FROM financenew.tmasterstok_finance m
+     FROM finance.tmasterstok_finance m
      WHERE m.mst_aktif = 'Y'
        AND m.mst_cab   = ?
      ORDER BY m.mst_brg_kode, m.mst_tanggal, m.mst_noreferensi`,
