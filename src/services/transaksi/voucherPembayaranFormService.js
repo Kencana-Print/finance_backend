@@ -245,12 +245,21 @@ const searchNota = async (type, supKode, search = "") => {
     params.push(supKode);
     if (search) params.push(like, like);
   } else if (type === "BPJ") {
-    sql = `SELECT bpj_nomor AS Nomor, DATE_FORMAT(bpj_tanggal,'%Y-%m-%d') AS Tanggal,
-            bpj_keterangan AS Keterangan, sup_nama AS Supplier
+    sql = `SELECT bpj_nomor AS Nomor, 
+                  DATE_FORMAT(bpj_tanggal,'%Y-%m-%d') AS Tanggal,
+                  bpj_keterangan AS Keterangan, 
+                  sup_nama AS Supplier,
+                  (pojh_TARIF * BPJ_JUMLAH * IF(pojh_status_ppn=1,((100+pojh_ppn)/100),1)) AS Total,
+                  IFNULL((
+                    SELECT SUM(voud_total) FROM kencanaprint.tvoucher_dtl
+                    WHERE voud_nota = bpj_nomor
+                  ), 0) AS SudahDibayar
            FROM kencanaprint.tbpj_hdr
+           INNER JOIN kencanaprint.tpojasa_hdr ON bpj_po_nomor = pojh_nomor
            INNER JOIN kencanaprint.tsupplier ON sup_kode = bpj_sup_kode
            WHERE sup_kode = ?
              ${search ? "AND (bpj_nomor LIKE ? OR sup_nama LIKE ?)" : ""}
+           HAVING (Total - SudahDibayar) > 0
            ORDER BY bpj_tanggal DESC LIMIT 100`;
     params.push(supKode);
     if (search) params.push(like, like);
