@@ -972,17 +972,27 @@ const getListPermintaanGarmen = async (cabang) => {
       h.user_create AS usr, h.mb_bagian AS bagian
     FROM kencanaprint.tgarmenmintabeli_hdr h
     WHERE h.mb_status <> 'CLOSE' AND h.mb_status <> 'DICLOSE'
-      AND h.mb_nomor NOT IN (SELECT po_mb_nomor FROM kencanaprint.tgarmenpo_hdr p WHERE po_mb_nomor <> '')
+      AND EXISTS (
+        SELECT 1
+        FROM kencanaprint.tgarmenmintabeli_dtl d
+        WHERE d.mbd_nomor = h.mb_nomor
+          AND d.mbd_jumlah > IFNULL((
+            SELECT SUM(po.pod_jumlah)
+            FROM kencanaprint.tgarmenpo_dtl po
+            INNER JOIN kencanaprint.tgarmenpo_hdr ph ON ph.po_nomor = po.pod_po_nomor
+            WHERE ph.po_mb_nomor = h.mb_nomor
+              AND po.pod_brg_kode = d.mbd_brg_kode
+          ), 0)
+      )
   `;
   const params = [];
   if (cabang === "P01") {
     sql += ` AND (h.mb_mintake = 'HO' OR h.mb_mintake = 'HO-')`;
   } else if (cabang) {
-    // Ubah filter dari mb_mintake menjadi mb_cab
-    sql += ` AND h.mb_cab = ?`;
+    sql += ` AND h.mb_mintake = ?`;
     params.push(cabang);
   }
-  sql += ` ORDER BY h.mb_tanggal DESC, h.mb_nomor DESC`; // 👈 Ubah urutan DESC
+  sql += ` ORDER BY h.mb_tanggal DESC, h.mb_nomor DESC`;
 
   const [rows] = await db.query(sql, params);
   return rows;
