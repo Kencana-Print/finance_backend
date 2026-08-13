@@ -976,13 +976,30 @@ const getListPermintaanGarmen = async (cabang) => {
         SELECT 1
         FROM kencanaprint.tgarmenmintabeli_dtl d
         WHERE d.mbd_nomor = h.mb_nomor
-          AND d.mbd_jumlah > IFNULL((
-            SELECT SUM(po.pod_jumlah)
-            FROM kencanaprint.tgarmenpo_dtl po
-            INNER JOIN kencanaprint.tgarmenpo_hdr ph ON ph.po_nomor = po.pod_po_nomor
-            WHERE ph.po_mb_nomor = h.mb_nomor
-              AND po.pod_brg_kode = d.mbd_brg_kode
-          ), 0)
+          AND d.mbd_jumlah > (
+            IFNULL((
+              -- Qty sudah di-PO (PO belum CLOSE)
+              SELECT SUM(pd.pod_jumlah)
+              FROM kencanaprint.tgarmenpo_dtl pd
+              INNER JOIN kencanaprint.tgarmenpo_hdr ph ON ph.po_nomor = pd.pod_nomor
+              WHERE ph.po_mb_nomor = h.mb_nomor
+                AND pd.pod_brg_kode = d.mbd_brg_kode
+                AND ph.po_status NOT LIKE '%CLOSE%'
+            ), 0)
+            +
+            IFNULL((
+              -- Qty sudah di-PO dan sudah CLOSE (realisasi via BPB)
+              SELECT SUM(bd.bpbd_jumlah)
+              FROM kencanaprint.tgarmenpo_dtl pd
+              INNER JOIN kencanaprint.tgarmenpo_hdr ph ON ph.po_nomor = pd.pod_nomor
+              INNER JOIN kencanaprint.tgarmenbpb_dtl bd ON bd.bpbd_brg_kode = pd.pod_brg_kode
+              INNER JOIN kencanaprint.tgarmenbpb_hdr bh ON bh.bpb_nomor = bd.bpbd_nomor
+              WHERE ph.po_mb_nomor = h.mb_nomor
+                AND pd.pod_brg_kode = d.mbd_brg_kode
+                AND ph.po_status LIKE '%CLOSE%'
+                AND bh.bpb_po_nomor = pd.pod_nomor
+            ), 0)
+          )
       )
   `;
   const params = [];
