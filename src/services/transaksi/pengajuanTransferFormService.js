@@ -383,6 +383,78 @@ const saveData = async (payload, user) => {
                 d.dcnama || "",
               ],
             );
+
+            // ── FIX: regenerate BKM/BBM otomatis (kena hapus oleh delete blanket di atas) ──
+            nn++;
+            const [[rowMasuk]] = await conn.query(
+              `SELECT IFNULL(MAX(CAST(LEFT(jur_no,2) AS UNSIGNED)),0) AS max_val
+               FROM tjurnal WHERE jur_otomatis=1 AND SUBSTRING(jur_no,3)=?`,
+              [nomor],
+            );
+            const noMasuk =
+              String(100 + nn + Number(rowMasuk.max_val)).slice(-2) + nomor;
+            const rekPrefix = (d.rekkode || "").substring(0, 5);
+
+            if (rekPrefix === "A-111") {
+              await conn.query(
+                `
+                INSERT INTO tjurnal
+                  (jur_no, jur_tanggal, jur_tipetransaksi, jur_cabang,
+                  jur_keterangan, jur_rek_kode, jur_otomatis, date_create, user_create)
+                VALUES (?, ?, 'BKM', 'P01',
+                  'BKM OTOMATIS: REALISASI PENGAJUAN TRANSFER',
+                  ?, 1, NOW(), ?)
+              `,
+                [noMasuk, d.tglRealisasi, d.rekkode, user.kode],
+              );
+              await conn.query(
+                `
+                INSERT INTO tjurnalitem (jurd_jur_no, jurd_rek_kode, jurd_debet, jurd_uraian, jurd_nourut)
+                VALUES (?, ?, ?, ?, 0)
+              `,
+                [noMasuk, d.rekkode, d.nominal, d.ket || ""],
+              );
+              await conn.query(
+                `
+                INSERT INTO tjurnalitem
+                  (jurd_jur_no, jurd_trs, jurd_nourut, jurd_uraian,
+                  jurd_kredit, jurd_rek_kode)
+                VALUES (?, 'BKM', 1, 'REALISASI TRANSFER', ?, ?)
+              `,
+                [noMasuk, d.nominal, rek_kode],
+              );
+            } else if (
+              rekPrefix === "A-112" ||
+              (d.rekkode || "").startsWith("B-211")
+            ) {
+              await conn.query(
+                `
+                INSERT INTO tjurnal
+                  (jur_no, jur_tanggal, jur_tipetransaksi, jur_cabang,
+                  jur_keterangan, jur_rek_kode, jur_otomatis, date_create, user_create)
+                VALUES (?, ?, 'BBM', 'P01',
+                  'BBM OTOMATIS: REALISASI PENGAJUAN TRANSFER',
+                  ?, 1, NOW(), ?)
+              `,
+                [noMasuk, d.tglRealisasi, d.rekkode, user.kode],
+              );
+              await conn.query(
+                `
+                INSERT INTO tjurnalitem (jurd_jur_no, jurd_rek_kode, jurd_debet, jurd_uraian, jurd_nourut)
+                VALUES (?, ?, ?, ?, 0)
+              `,
+                [noMasuk, d.rekkode, d.nominal, d.ket || ""],
+              );
+              await conn.query(
+                `
+                  INSERT INTO tjurnalitem
+                    (jurd_jur_no, jurd_trs, jurd_nourut, jurd_uraian,
+                    jurd_kredit, jurd_rek_kode)
+                  VALUES (?, 'BBM', 1, 'REALISASI TRANSFER', ?, ?)
+                `,
+                [noMasuk, d.nominal, rek_kode],
+              );
+            }
           }
         } else {
           // ── Realisasi baru ──
@@ -462,7 +534,7 @@ const saveData = async (payload, user) => {
             nn++;
             const [[rowMasuk]] = await conn.query(
               `SELECT IFNULL(MAX(CAST(LEFT(jur_no,2) AS UNSIGNED)),0) AS max_val
-               FROM tjurnal WHERE jur_otomatis=1 AND jur_no=?`,
+               FROM tjurnal WHERE jur_otomatis=1 AND SUBSTRING(jur_no,3)=?`,
               [nomor],
             );
             const noMasuk =
