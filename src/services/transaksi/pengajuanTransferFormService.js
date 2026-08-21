@@ -361,8 +361,8 @@ const saveData = async (payload, user) => {
             // Header kredit
             await conn.query(
               `
-              INSERT INTO tjurnalitem (jurd_jur_no, jurd_rek_kode, jurd_kredit, jurd_uraian)
-              VALUES (?, ?, ?, ?)
+              INSERT INTO tjurnalitem (jurd_jur_no, jurd_rek_kode, jurd_kredit, jurd_uraian, jurd_nourut)
+              VALUES (?, ?, ?, ?, 0)
             `,
               [d.jurnal, rek_kode, d.nominal, d.ket || ""],
             );
@@ -434,8 +434,8 @@ const saveData = async (payload, user) => {
             // Header kredit
             await conn.query(
               `
-              INSERT INTO tjurnalitem (jurd_jur_no, jurd_rek_kode, jurd_kredit, jurd_uraian)
-              VALUES (?, ?, ?, ?)
+              INSERT INTO tjurnalitem (jurd_jur_no, jurd_rek_kode, jurd_kredit, jurd_uraian, jurd_nourut)
+              VALUES (?, ?, ?, ?, 0)
             `,
               [jurnalNomor, rek_kode, d.nominal, d.ket || ""],
             );
@@ -485,8 +485,8 @@ const saveData = async (payload, user) => {
               );
               await conn.query(
                 `
-                INSERT INTO tjurnalitem (jurd_jur_no, jurd_rek_kode, jurd_debet, jurd_uraian)
-                VALUES (?, ?, ?, ?)
+                INSERT INTO tjurnalitem (jurd_jur_no, jurd_rek_kode, jurd_debet, jurd_uraian, jurd_nourut)
+                VALUES (?, ?, ?, ?, 0)
               `,
                 [noMasuk, d.rekkode, d.nominal, d.ket || ""],
               );
@@ -517,8 +517,8 @@ const saveData = async (payload, user) => {
               );
               await conn.query(
                 `
-                INSERT INTO tjurnalitem (jurd_jur_no, jurd_rek_kode, jurd_debet, jurd_uraian)
-                VALUES (?, ?, ?, ?)
+                INSERT INTO tjurnalitem (jurd_jur_no, jurd_rek_kode, jurd_debet, jurd_uraian, jurd_nourut)
+                VALUES (?, ?, ?, ?, 0)
               `,
                 [noMasuk, d.rekkode, d.nominal, d.ket || ""],
               );
