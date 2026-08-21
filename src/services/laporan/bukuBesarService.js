@@ -139,9 +139,11 @@ const getBukuBesar = async (rekkode, startDate, endDate) => {
   // ── Step 3: Hitung running saldo di Node.js ────────────────────────
   // Delphi: xsaldo = xsaldo + debet - kredit per baris
   const result = [];
+  let rowId = 1;
 
   // Baris pertama: Saldo Awal
   result.push({
+    id: rowId++,
     Tanggal: startDate,
     Nomor: "",
     Trs: "",
@@ -159,6 +161,7 @@ const getBukuBesar = async (rekkode, startDate, endDate) => {
   for (const row of rows) {
     xsaldo = xsaldo + Number(row.Debet) - Number(row.Kredit);
     result.push({
+      id: rowId++,
       Tanggal: row.Tanggal,
       Nomor: row.Nomor,
       Trs: row.Trs,
