@@ -84,24 +84,38 @@ const getBukuBesar = async (rekkode, startDate, endDate) => {
        IF(a.jur_otomatis = 0 OR a.jur_otomatis = 2,
          a.jur_no,
          MID(a.jur_no, 3, 18)
-       )                                           AS Nomor,
-       a.jur_tipetransaksi                        AS Trs,
-       IFNULL(a.jur_nota, '')                     AS Nota,
-       IFNULL(a.jur_penerima, '')                 AS Penerima,
-       IFNULL(c.jurd_uraian, '')                  AS Keterangan,
+       )                                         AS Nomor,
+       a.jur_tipetransaksi                       AS Trs,
+       IFNULL(a.jur_nota, '')                    AS Nota,
+       IFNULL(a.jur_penerima, '')                AS Penerima,
+       IFNULL(c.jurd_uraian, '')                 AS Keterangan,
        IF(c.jurd_kredit <> 0, c.jurd_kredit, 0)  AS Debet,
        IF(c.jurd_debet  <> 0, c.jurd_debet,  0)  AS Kredit,
-       IFNULL(c.jurd_rek_kode, '')                AS Account,
-       IFNULL(c.rek_nama, '')                     AS NamaAccount,
+       IFNULL(c.jurd_rek_kode, '')               AS Account,
+       IFNULL(c.rek_nama, '')                    AS NamaAccount,
        DATE_FORMAT(
          IFNULL(t.tanggal, s.sh_tgltransfer),
          '%Y-%m-%d'
-       )                                           AS TglTransfer
+       )                                         AS TglTransfer
      FROM tjurnalitem b
      LEFT JOIN tjurnal a ON a.jur_no = b.jurd_jur_no
-     LEFT JOIN kencanaprint.terima_bayar_debet t ON t.nomor = a.jur_nomor
-     LEFT JOIN retail.tsetor_hdr s ON s.sh_nomor = a.jur_nomor
-     LEFT JOIN ttrs v ON v.kode = a.jur_tipetransaksi
+     
+     LEFT JOIN (
+       SELECT nomor, MAX(tanggal) AS tanggal 
+       FROM kencanaprint.terima_bayar_debet 
+       GROUP BY nomor
+     ) t ON t.nomor = a.jur_nomor
+     LEFT JOIN (
+       SELECT sh_nomor, MAX(sh_tgltransfer) AS sh_tgltransfer 
+       FROM retail.tsetor_hdr 
+       GROUP BY sh_nomor
+     ) s ON s.sh_nomor = a.jur_nomor
+     LEFT JOIN (
+       SELECT kode, MAX(nourut) AS nourut 
+       FROM ttrs 
+       GROUP BY kode
+     ) v ON v.kode = a.jur_tipetransaksi
+
      LEFT JOIN (
        SELECT
          x.jurd_jur_no,
