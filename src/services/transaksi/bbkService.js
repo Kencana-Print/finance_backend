@@ -54,6 +54,7 @@ const getBrowseDetail = async (startDate, endDate, cabang) => {
     WHERE h.jur_tipetransaksi = 'BBK'
       AND h.jur_otomatis = 0
       AND d.jurd_trs <> ''
+      AND d.jurd_debet<>0
       AND h.jur_tanggal BETWEEN ? AND ?
   `;
   const params = [startDate, endDate];
