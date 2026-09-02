@@ -104,11 +104,14 @@ const getDetailForm = async (nomor) => {
       d.jurd_cc_kode, c.cc_nama,
       d.jurd_dcnama,
       d.jurd_sup_kode, d.jurd_sup_nama,
-      d.jurd_bank, d.jurd_rekening, d.jurd_atasnama
+      d.jurd_bank, d.jurd_rekening, d.jurd_atasnama,
+      d.jurd_satuan,d.jurd_qty,d.jurd_harga,d.jurd_mb,d.jurd_brg_kode,
+      m.mb_jenis,m.mb_cab
     FROM tjurnal h
     LEFT JOIN tjurnalitem d ON d.jurd_jur_no = h.jur_no
     LEFT JOIN trekening r ON r.rek_kode = d.jurd_rek_kode
     LEFT JOIN tcostcenter c ON c.cc_kode = d.jurd_cc_kode
+    left join kencanaprint.tgarmenmintabeli_hdr m ON m.mb_nomor=d.jurd_mb 
     WHERE d.jurd_trs = 'BBK' AND h.jur_no = ?
     ORDER BY d.jurd_nourut
   `,
@@ -123,13 +126,18 @@ const getDetailForm = async (nomor) => {
     .map((r) => ({
       no: r.jurd_nourut,
       uraian: r.jurd_uraian,
-      nominal: Number(r.jurd_debet),
+      total: Number(r.jurd_debet),
       rekkode: r.det_rek_kode || "",
       reknama: r.det_reknama || "",
       cckode: r.jurd_cc_kode || 0,
       ccnama: r.cc_nama || "",
       dcnama: r.jurd_dcnama || "",
       dckode: r.jurd_cc_kode || 0,
+      mb: r.jurd_mb || "",
+      kdbrg: r.jurd_brg_kode || "",
+      satuan: r.jurd_satuan || "",
+      qty: Number(r.jurd_qty),
+      harga: Number(r.jurd_harga),
       // ── Kolom supplier (BBK punya, BKK tidak) ──
       kdsup: r.jurd_sup_kode || "",
       supplier: r.jurd_sup_nama || "",
@@ -244,7 +252,7 @@ const saveData = async (payload, user) => {
     ]);
 
     // Hitung total
-    const total = detail.reduce((s, d) => s + (Number(d.nominal) || 0), 0);
+    const total = detail.reduce((s, d) => s + (Number(d.total) || 0), 0);
 
     // Insert kredit header
     await conn.query(
@@ -267,15 +275,21 @@ const saveData = async (payload, user) => {
         `
         INSERT INTO tjurnalitem
           (jurd_jur_no, jurd_trs, jurd_nourut, jurd_uraian,
+          jurd_satuan,jurd_qty,jurd_harga,jurd_mb,jurd_brg_kode,
            jurd_debet, jurd_rek_kode, jurd_cc_kode, jurd_dcnama,
            jurd_sup_kode, jurd_sup_nama, jurd_bank, jurd_rekening, jurd_atasnama)
-        VALUES (?, 'BBK', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, 'BBK', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
         [
           actualNomor,
           i,
           d.uraian,
-          Number(d.nominal),
+          d.satuan,
+          Number(d.qty),
+          Number(d.harga),
+          d.mb,
+          d.kdbrg,
+          Number(d.total),
           d.rekkode || "",
           d.cckode || 0,
           d.dcnama || "",
@@ -312,12 +326,12 @@ const saveData = async (payload, user) => {
         await conn.query(
           `INSERT INTO tjurnalitem (jurd_jur_no, jurd_rek_kode, jurd_debet, jurd_uraian)
            VALUES (?, ?, ?, ?)`,
-          [noBkm, d.rekkode, d.nominal, d.uraian],
+          [noBkm, d.rekkode, d.total, d.uraian],
         );
         await conn.query(
           `INSERT INTO tjurnalitem (jurd_jur_no, jurd_trs, jurd_nourut, jurd_uraian, jurd_kredit, jurd_rek_kode)
            VALUES (?, 'BKM', 1, ?, ?, ?)`,
-          [noBkm, keterangan || "", d.nominal, rek_kode],
+          [noBkm, keterangan || "", d.total, rek_kode],
         );
       }
 
@@ -349,12 +363,12 @@ const saveData = async (payload, user) => {
         await conn.query(
           `INSERT INTO tjurnalitem (jurd_jur_no, jurd_rek_kode, jurd_debet, jurd_uraian)
            VALUES (?, ?, ?, ?)`,
-          [noBbm, d.rekkode, d.nominal, d.uraian],
+          [noBbm, d.rekkode, d.total, d.uraian],
         );
         await conn.query(
           `INSERT INTO tjurnalitem (jurd_jur_no, jurd_trs, jurd_nourut, jurd_uraian, jurd_kredit, jurd_rek_kode)
            VALUES (?, 'BBM', 1, ?, ?, ?)`,
-          [noBbm, keterangan || "", d.nominal, rek_kode],
+          [noBbm, keterangan || "", d.total, rek_kode],
         );
       }
 
@@ -392,7 +406,7 @@ const getPrintData = async (nomor) => {
     `
     SELECT jurd_nourut AS no, jurd_uraian AS uraian, jurd_debet AS nominal
     FROM tjurnalitem
-    WHERE jurd_jur_no = ? AND jurd_trs = 'BBK'
+    WHERE jurd_debet<>0 and jurd_jur_no = ? AND jurd_trs = 'BBK'
     ORDER BY jurd_nourut
   `,
     [nomor],
