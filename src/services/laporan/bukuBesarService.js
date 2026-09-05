@@ -55,29 +55,21 @@ const getAccountByKode = async (kode) => {
 // Delphi pakai temp table MySQL; di web kita hitung running saldo di memori
 const getBukuBesar = async (rekkode, startDate, endDate) => {
   // ── Step 1: Saldo Awal ─────────────────────────────────────────────
-  // Delphi: SUM(jurd_kredit - jurd_debet) WHERE jurd_nourut<>0
-  //         AND jur_rek_kode = rekkode AND jur_tanggal < startDate
+  // FIX: pakai basis yang SAMA dengan Step 2 — filter langsung di
+  // tjurnalitem.jurd_rek_kode pada baris header (nourut=0), bukan
+  // via tjurnal.jur_rek_kode + baris lawan (nourut<>0) yang terbukti
+  // tidak konsisten untuk transaksi multi-baris.
   const [[saldoRow]] = await db.query(
-    `SELECT IFNULL(SUM(d.jurd_kredit - d.jurd_debet), 0) AS Saldo
-     FROM tjurnalitem d
-     INNER JOIN tjurnal j ON j.jur_no = d.jurd_jur_no
-     WHERE d.jurd_nourut <> 0
-       AND j.jur_rek_kode = ?
-       AND j.jur_tanggal < ?`,
+    `SELECT IFNULL(SUM(b.jurd_debet - b.jurd_kredit), 0) AS Saldo
+     FROM tjurnalitem b
+     LEFT JOIN tjurnal a ON a.jur_no = b.jurd_jur_no
+     WHERE b.jurd_nourut = 0
+       AND b.jurd_rek_kode = ?
+       AND a.jur_tanggal < ?`,
     [rekkode, startDate],
   );
   let xsaldo = Number(saldoRow.Saldo) || 0;
-
   // ── Step 2: Transaksi periode ──────────────────────────────────────
-  // Delphi query utama:
-  //   b = tjurnalitem WHERE nourut=0 AND rek_kode=filter (header/trigger)
-  //   c = tjurnalitem WHERE nourut<>0 (detail/lawan) JOIN ke b via jur_no
-  //   Debet/Kredit dibalik dari perspektif lawan:
-  //     debet  = IF(jurd_kredit<>0, jurd_kredit, 0)
-  //     kredit = IF(jurd_debet<>0,  jurd_debet,  0)
-  //   Nomor: IF(jur_otomatis=0 OR jur_otomatis=2, jur_no, MID(jur_no,3,18))
-  //   TglTransfer: IFNULL(t.tanggal, s.sh_tgltransfer) dari terima_bayar_debet / tsetor_hdr
-  //   Sort: jur_tanggal, v.nourut (dari ttrs), jur_no
   const [rows] = await db.query(
     `SELECT
        DATE_FORMAT(a.jur_tanggal, '%Y-%m-%d')    AS Tanggal,
@@ -89,8 +81,16 @@ const getBukuBesar = async (rekkode, startDate, endDate) => {
        IFNULL(a.jur_nota, '')                    AS Nota,
        IFNULL(a.jur_penerima, '')                AS Penerima,
        IFNULL(c.jurd_uraian, '')                 AS Keterangan,
-       IF(c.jurd_kredit <> 0, c.jurd_kredit, 0)  AS Debet,
-       IF(c.jurd_debet  <> 0, c.jurd_debet,  0)  AS Kredit,
+       -- FIX: transaksi otomatis (jur_otomatis=1) ambil langsung dari header (b),
+       -- bukan dibalik dari baris lawan (c), karena nilai final sudah final di header.
+       IF(a.jur_otomatis = 1,
+         b.jurd_debet,
+         IF(c.jurd_kredit <> 0, c.jurd_kredit, 0)
+       )                                         AS Debet,
+       IF(a.jur_otomatis = 1,
+         b.jurd_kredit,
+         IF(c.jurd_debet <> 0, c.jurd_debet, 0)
+       )                                         AS Kredit,
        IFNULL(c.jurd_rek_kode, '')               AS Account,
        IFNULL(c.rek_nama, '')                    AS NamaAccount,
        DATE_FORMAT(
@@ -136,12 +136,10 @@ const getBukuBesar = async (rekkode, startDate, endDate) => {
     [rekkode, startDate, endDate],
   );
 
-  // ── Step 3: Hitung running saldo di Node.js ────────────────────────
-  // Delphi: xsaldo = xsaldo + debet - kredit per baris
+  // ── Step 3: Hitung running saldo ────────────────────────────────────
   const result = [];
   let rowId = 1;
 
-  // Baris pertama: Saldo Awal
   result.push({
     id: rowId++,
     Tanggal: startDate,

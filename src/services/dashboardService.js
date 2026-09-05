@@ -41,25 +41,46 @@ const getSummary = async (cabang) => {
     `SELECT DATE_FORMAT(NOW(),'%Y-%m-%d') AS serverDate`,
   );
 
-  // 5. Buku Besar — saldo account default cabang
-  const defaultAccount =
-    cabang === "P01"
-      ? "A-111101"
-      : cabang === "P02"
-        ? "A-111102"
-        : cabang === "P04"
-          ? "A-111103"
-          : "A-111101";
+  // 5. Saldo Kas & Saldo Bank — per cabang
+  const kasPrefix = "A-111";
+  const bankPrefix1 = "A-112";
+  const bankPrefix2 = "B-211";
 
-  const [[saldoRow]] = await db.query(
-    `SELECT IFNULL(SUM(d.jurd_kredit - d.jurd_debet), 0) AS saldo
-     FROM tjurnalitem d
-     INNER JOIN tjurnal j ON j.jur_no = d.jurd_jur_no
-     WHERE d.jurd_nourut <> 0
-       AND j.jur_rek_kode = ?
-       AND j.jur_tanggal <= CURDATE()`,
-    [defaultAccount],
+  // Ambil semua account kas milik cabang ini
+  const [kasAccounts] = await db.query(
+    `SELECT rek_kode FROM trekening
+   WHERE LEFT(rek_kode,5) = ? AND rek_cabang = ? AND rek_isaktif = 0`,
+    [kasPrefix, cabang],
   );
+
+  const [bankAccounts] = await db.query(
+    `SELECT rek_kode FROM trekening
+   WHERE (LEFT(rek_kode,5) = ? OR LEFT(rek_kode,5) = ?)
+     AND rek_cabang = ? AND rek_isaktif = 0`,
+    [bankPrefix1, bankPrefix2, cabang],
+  );
+
+  const sumSaldo = async (rekKodes) => {
+    if (!rekKodes.length) return 0;
+    const placeholders = rekKodes.map(() => "?").join(",");
+    const [[row]] = await db.query(
+      `SELECT IFNULL(SUM(b.jurd_debet - b.jurd_kredit), 0) AS saldo
+     FROM tjurnalitem b
+     LEFT JOIN tjurnal a ON a.jur_no = b.jurd_jur_no
+     WHERE b.jurd_nourut = 0
+       AND b.jurd_rek_kode IN (${placeholders})
+       AND a.jur_tanggal <= CURDATE()`,
+      rekKodes,
+    );
+    return Number(row.saldo);
+  };
+
+  const saldoKas = await sumSaldo(kasAccounts.map((r) => r.rek_kode));
+  const saldoBank = await sumSaldo(bankAccounts.map((r) => r.rek_kode));
+
+  // Ambil satu kode representatif untuk ditampilkan di label (opsional)
+  const defaultKasAccount = kasAccounts[0]?.rek_kode || "-";
+  const defaultBankAccount = bankAccounts[0]?.rek_kode || "-";
 
   // 6. Rekonsiliasi — jumlah yang selisih ≠ 0 bulan ini
   const [[rekonRow]] = await db.query(
@@ -197,8 +218,19 @@ const getSummary = async (cabang) => {
     transfer: { count: Number(pjtRow.count), total: Number(pjtRow.total) },
     setoran: { count: Number(setoranRow.count) },
     serverDate: dateRow.serverDate,
-    // Tambahan baru:
-    saldoKas: { account: defaultAccount, saldo: Number(saldoRow.saldo) },
+    // Ganti saldoKas tunggal jadi dua kategori:
+    saldo: {
+      kas: {
+        account: defaultKasAccount,
+        saldo: saldoKas,
+        count: kasAccounts.length,
+      },
+      bank: {
+        account: defaultBankAccount,
+        saldo: saldoBank,
+        count: bankAccounts.length,
+      },
+    },
     rekon: { selisihCount: Number(rekonRow.count) },
     stok: { negativeCount: Number(stokRow.count) },
     voucherPt: {

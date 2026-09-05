@@ -9,7 +9,7 @@ const jwt = require("jsonwebtoken");
  */
 const login = async (username, password) => {
   const [rows] = await db.query(
-    `SELECT user_kode, user_nama, user_password, user_cabang, user_aktif
+    `SELECT user_kode, user_nama, user_password, user_cabang, user_cabang_list, user_aktif
       FROM tuser
     WHERE UPPER(user_kode) = UPPER(?) LIMIT 1`,
     [username],
@@ -19,19 +19,26 @@ const login = async (username, password) => {
 
   const user = rows[0];
 
-  // Delphi: user_aktif = 0 → AKTIF, selain 0 → pasif
   if (user.user_aktif !== 0 && user.user_aktif !== "0")
     throw new Error("User sudah pasif.");
 
-  // Cek password — plain text (legacy Delphi) atau bcrypt
   const valid = password === user.user_password;
   if (!valid) throw new Error("Username atau password salah.");
+
+  // Cabang list: kalau ada isinya di DB, split jadi array; kalau tidak, cuma cabang sendiri
+  const cabangList = user.user_cabang_list
+    ? user.user_cabang_list
+        .split(",")
+        .map((c) => c.trim())
+        .filter(Boolean)
+    : [user.user_cabang || ""];
 
   const payload = {
     kode: user.user_kode,
     nama: user.user_nama,
-    level: "USER", // tidak ada kolom level, default USER
+    level: "USER",
     cabang: user.user_cabang || "",
+    cabangList, // ← baru
   };
 
   const token = jwt.sign(payload, process.env.JWT_SECRET, {

@@ -2,9 +2,7 @@ const svc = require("../services/dashboardService");
 
 const getSummary = async (req, res) => {
   try {
-    // Ambil cabang dari token user yang login
-    const cabang = req.user?.cabang || "ALL";
-
+    const cabang = req.query.cabang || req.user.cabang;
     const data = await svc.getSummary(cabang);
     res.json({ success: true, data });
   } catch (e) {
