@@ -15,6 +15,7 @@ router.get(
   checkPermission(menuId, "view"),
   ctrl.getBrowsePendingAll,
 );
+router.patch("/:nomor/status-finance", verifyToken, ctrl.updateStatusFinance);
 router.delete(
   "/:nomor",
   verifyToken,

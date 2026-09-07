@@ -87,6 +87,19 @@ const getDetailPengajuanGA = async (req, res) => {
   }
 };
 
+const updateStatusFinance = async (req, res) => {
+  try {
+    const { pjhNomor } = req.params;
+    const { status } = req.body;
+    await svc.updateStatusFinance(pjhNomor, status);
+    res
+      .status(200)
+      .json({ success: true, message: "Status berhasil diperbarui." });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
 const getListPoExternal = async (req, res) => {
   try {
     res.json({ success: true, data: await svc.getListPoExternal() });
@@ -162,6 +175,7 @@ module.exports = {
   getAccountByKode,
   getListPengajuanGA,
   getDetailPengajuanGA,
+  updateStatusFinance,
   getListPoExternal,
   getListVoucher,
   getListPermintaanGarmen,

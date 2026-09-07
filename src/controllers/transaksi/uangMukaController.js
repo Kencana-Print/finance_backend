@@ -34,4 +34,21 @@ const getBrowsePendingAll = async (req, res) => {
   }
 };
 
-module.exports = { getBrowse, deleteData, getBrowsePendingAll };
+const updateStatusFinance = async (req, res) => {
+  try {
+    const { status } = req.body;
+    await svc.updateStatusFinance(req.params.nomor, status);
+    res
+      .status(200)
+      .json({ success: true, message: "Status berhasil diperbarui." });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+module.exports = {
+  getBrowse,
+  deleteData,
+  getBrowsePendingAll,
+  updateStatusFinance,
+};

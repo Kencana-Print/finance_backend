@@ -12,39 +12,29 @@ const getBrowse = async (startDate, endDate, cabang) => {
       b.bon_penerima     AS Penerima,
       b.bon_nominal      AS Nominal,
       IF(b.bon_jur_no='', 0,
-        IFNULL((
-          SELECT SUM(d.jurd_kredit)
-          FROM tjurnalitem d
-          WHERE d.jurd_jur_no = b.bon_jur_no
-        ), 0)
+        IFNULL((SELECT SUM(d.jurd_kredit) FROM tjurnalitem d WHERE d.jurd_jur_no = b.bon_jur_no), 0)
       ) AS Terpakai,
       (b.bon_nominal - IF(b.bon_jur_no='', 0,
-        IFNULL((
-          SELECT SUM(d.jurd_kredit)
-          FROM tjurnalitem d
-          WHERE d.jurd_jur_no = b.bon_jur_no
-        ), 0)
+        IFNULL((SELECT SUM(d.jurd_kredit) FROM tjurnalitem d WHERE d.jurd_jur_no = b.bon_jur_no), 0)
       )) AS Sisa,
       b.bon_keterangan   AS Keterangan,
       b.bon_jur_no       AS NoBukti,
       IF(b.bon_selesai=0,'Belum','Sudah') AS Selesai,
-      IF(IFNULL((
-        SELECT h.jur_close FROM tjurnal h WHERE h.jur_no = b.bon_jur_no
-      ), 0)=0,'Belum','Sudah') AS Closed
+      IF(IFNULL((SELECT h.jur_close FROM tjurnal h WHERE h.jur_no = b.bon_jur_no), 0)=0,'Belum','Sudah') AS Closed,
+      (SELECT pmt.pmt_status_finance
+      FROM ga.tpermintaan_hdr pmt
+      WHERE pmt.pmt_pjh_nomor = b.bon_pjh_nomor
+      ORDER BY pmt.pmt_nomor DESC LIMIT 1) AS StatusFinance
     FROM tkasbon b
     LEFT JOIN trekening r ON r.rek_kode = b.bon_rek_kode
     WHERE b.bon_tanggal BETWEEN ? AND ?
   `;
-
   const params = [startDate, endDate];
-
   if (cabang && cabang !== "P01" && cabang !== "ALL") {
     sql += ` AND b.bon_cabang = ?`;
     params.push(cabang);
   }
-
   sql += ` ORDER BY b.bon_nomor`;
-
   const [rows] = await db.query(sql, params);
   return rows;
 };
@@ -62,15 +52,15 @@ const deleteData = async (nomor, cabang) => {
   const conn = await db.getConnection();
   await conn.beginTransaction();
   try {
-    // Reset tpermintaan_hdr di DB ga2 (cross-DB)
+    // Reset tpermintaan_hdr di DB ga (cross-DB)
     if (bon.bon_pjh_nomor) {
       await conn.query(
-        `UPDATE ga2.tpermintaan_hdr SET pmt_approval = 0
+        `UPDATE ga.tpermintaan_hdr SET pmt_approval = 0
          WHERE pmt_pjh_nomor = ?`,
         [bon.bon_pjh_nomor],
       );
       await conn.query(
-        `UPDATE ga2.tpermintaan_dtl SET
+        `UPDATE ga.tpermintaan_dtl SET
            pmd_tanggal_approved = NULL, pmd_user_approved = '',
            pmd_bon = '', pmd_dana_approved = 0,
            pmd_user_reject = '', pmd_tanggal_reject = NULL,
@@ -102,31 +92,58 @@ const getBrowsePendingAll = async () => {
        b.bon_penerima     AS Penerima,
        b.bon_nominal      AS Nominal,
        IF(b.bon_jur_no='', 0,
-         IFNULL((
-           SELECT SUM(d.jurd_kredit)
-           FROM tjurnalitem d
-           WHERE d.jurd_jur_no = b.bon_jur_no
-         ), 0)
+         IFNULL((SELECT SUM(d.jurd_kredit) FROM tjurnalitem d WHERE d.jurd_jur_no = b.bon_jur_no), 0)
        ) AS Terpakai,
        (b.bon_nominal - IF(b.bon_jur_no='', 0,
-         IFNULL((
-           SELECT SUM(d.jurd_kredit)
-           FROM tjurnalitem d
-           WHERE d.jurd_jur_no = b.bon_jur_no
-         ), 0)
+         IFNULL((SELECT SUM(d.jurd_kredit) FROM tjurnalitem d WHERE d.jurd_jur_no = b.bon_jur_no), 0)
        )) AS Sisa,
        b.bon_keterangan   AS Keterangan,
        b.bon_jur_no       AS NoBukti,
        IF(b.bon_selesai=0,'Belum','Sudah') AS Selesai,
-       IF(IFNULL((
-         SELECT h.jur_close FROM tjurnal h WHERE h.jur_no = b.bon_jur_no
-       ), 0)=0,'Belum','Sudah') AS Closed
+       IF(IFNULL((SELECT h.jur_close FROM tjurnal h WHERE h.jur_no = b.bon_jur_no), 0)=0,'Belum','Sudah') AS Closed,
+       pmt.pmt_status_finance AS StatusFinance
      FROM tkasbon b
      LEFT JOIN trekening r ON r.rek_kode = b.bon_rek_kode
+     LEFT JOIN ga.tpermintaan_hdr pmt ON pmt.pmt_pjh_nomor = b.bon_pjh_nomor
      WHERE b.bon_selesai = 0
      ORDER BY b.bon_tanggal`,
   );
   return rows;
 };
 
-module.exports = { getBrowse, deleteData, getBrowsePendingAll };
+// ── Update status Finance — nempel di tpermintaan_hdr, dicari via
+// bon_pjh_nomor (bukan pmd_bon, karena itu baru keisi saat Penyelesaian) ──
+const updateStatusFinance = async (bonNomor, status) => {
+  const validStatus = [
+    "PENDING",
+    "MENUNGGU_PEMBELIAN",
+    "BULAN_DEPAN",
+    "OTORISASI",
+    null,
+  ];
+  if (!validStatus.includes(status)) throw new Error("Status tidak valid.");
+
+  const [[bon]] = await db.query(
+    `SELECT bon_pjh_nomor, bon_selesai FROM tkasbon WHERE bon_nomor = ?`,
+    [bonNomor],
+  );
+  if (!bon) throw new Error("Kasbon tidak ditemukan.");
+  if (!bon.bon_pjh_nomor)
+    throw new Error("Kasbon ini tidak terhubung ke pengajuan GA.");
+  if (Number(bon.bon_selesai) !== 0)
+    throw new Error("Sudah ada penyelesaian. Status tidak bisa diubah lagi.");
+
+  const [result] = await db.query(
+    `UPDATE ga.tpermintaan_hdr SET pmt_status_finance = ? WHERE pmt_pjh_nomor = ?`,
+    [status, bon.bon_pjh_nomor],
+  );
+  if (result.affectedRows === 0)
+    throw new Error("Data permintaan terkait tidak ditemukan.");
+};
+
+module.exports = {
+  getBrowse,
+  deleteData,
+  getBrowsePendingAll,
+  updateStatusFinance,
+};

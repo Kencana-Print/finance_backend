@@ -1,5 +1,8 @@
 // config/changelog.js
 const changelogs = {
+  "1.0.8": [
+    "Pembaruan pada modul Uang Muka, sekarang Pengajuan Dana dipanggil ketika Penyelesaian Uang Muka, bukan ketika Buat Uang Muka, agar satu dokumen Uang Muka bisa digunakan untuk beberapa Pengajuan Dana",
+  ],
   "1.0.7": [
     "Laporan Daftar Hutang, dipindahkan dari MANKSI. Disertai penambahan card Hutang pada Dashboard",
   ],

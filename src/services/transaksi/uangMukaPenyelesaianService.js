@@ -1,5 +1,6 @@
 const db = require("../../config/database");
 const { cekTutupPeriode } = require("../../services/tutupBukuService");
+const { ensurePermintaan } = require("./uangMukaFormService");
 
 // ── Load form penyelesaian ────────────────────────────────────────────
 const getFormData = async (nomor) => {
@@ -108,6 +109,7 @@ const getFormData = async (nomor) => {
     `
     SELECT
       h.pmt_pjh_nomor, h.pmt_nomor, h.pmt_buyed,
+      h.pmt_status_finance,
       DATE_FORMAT(j.pjh_tanggal,'%Y-%m-%d') AS pjh_tanggal,
       DATE_FORMAT(h.pmt_tanggal,'%Y-%m-%d') AS pmt_tanggal,
       j.pjh_jenis_permintaan, j.pjh_nonga,
@@ -119,14 +121,16 @@ const getFormData = async (nomor) => {
       d.pmd_bon, d.pmd_kegunaan, d.pmd_verified_buyed,
       d.pmd_nilai_terpakai, d.pmd_tanggal_approved,
       d.pmd_tanggal_buyed, d.pmd_rek_kode,
-      r.rek_nama, d.pmd_cc_kode, c.cc_nama, d.pmd_dcnama
+      r.rek_nama, d.pmd_cc_kode, c.cc_nama, d.pmd_dcnama,
+      j.pjh_cc_kode, j.pjh_cc_dcnama, pcc.cc_nama AS pjh_cc_nama
     FROM tkasbon k
-    INNER JOIN ga2.tpermintaan_dtl d ON d.pmd_bon = k.bon_nomor
-    INNER JOIN ga2.tpermintaan_hdr h ON h.pmt_nomor = d.pmd_pmt_nomor
-    INNER JOIN ga2.tpengajuan2_hdr j ON j.pjh_nomor = h.pmt_pjh_nomor
-    INNER JOIN ga2.peminta p ON p.nik = j.pjh_nik
+    INNER JOIN ga.tpermintaan_dtl d ON d.pmd_bon = k.bon_nomor
+    INNER JOIN ga.tpermintaan_hdr h ON h.pmt_nomor = d.pmd_pmt_nomor
+    INNER JOIN ga.tpengajuan2_hdr j ON j.pjh_nomor = h.pmt_pjh_nomor
+    INNER JOIN ga.peminta p ON p.nik = j.pjh_nik
     LEFT JOIN trekening r ON r.rek_kode = d.pmd_rek_kode
     LEFT JOIN tcostcenter c ON c.cc_kode = d.pmd_cc_kode
+    LEFT JOIN tcostcenter pcc ON pcc.cc_kode = j.pjh_cc_kode
     WHERE h.pmt_approval = 1 AND d.pmd_tanggal_approved IS NOT NULL
       AND k.bon_nomor = ?
     ORDER BY d.pmd_nourut
@@ -186,14 +190,17 @@ const getFormData = async (nomor) => {
         ga: 1,
         rekkode: r.pmd_rek_kode || "",
         reknama: r.rek_nama || "",
-        cckode: r.pmd_cc_kode || 0,
-        ccnama: r.cc_nama || "",
-        dcnama: r.pmd_dcnama || "",
+        // Prioritas: nilai yang SUDAH pernah disimpan Finance (pmd_cc_kode),
+        // fallback ke default dari Pengajuan Dana kalau belum pernah diisi.
+        cckode: r.pmd_cc_kode || r.pjh_cc_kode || 0,
+        ccnama: r.cc_nama || r.pjh_cc_nama || "",
+        dcnama: r.pmd_dcnama || r.pjh_cc_dcnama || "",
         kdsup: "",
         supplier: "",
         bank: "",
         rekening: "",
         atasnama: "",
+        statusFinance: r.pmt_status_finance || "",
         gabrg: isGabrg ? 1 : 0,
         edit: isEdit ? 1 : 0,
         pjh_link: "",
@@ -490,8 +497,8 @@ const saveData = async (payload, user) => {
       const [[maxPjh]] = await conn.query(
         `
         SELECT IFNULL(MAX(x.nomer),0) AS max_val FROM (
-          SELECT d.pmd_nourut AS nomer FROM ga2.tpermintaan_dtl d
-          LEFT JOIN ga2.tpermintaan_hdr h ON h.pmt_nomor=d.pmd_pmt_nomor
+          SELECT d.pmd_nourut AS nomer FROM ga.tpermintaan_dtl d
+          LEFT JOIN ga.tpermintaan_hdr h ON h.pmt_nomor=d.pmd_pmt_nomor
           WHERE h.pmt_pjh_nomor=?
           UNION
           SELECT bond_nourut AS nomer FROM tkasbonitem WHERE bond_nomor=?
@@ -519,18 +526,29 @@ const saveData = async (payload, user) => {
 
       // Update pmt_approval + pmt_buyed jika pmt berubah
       if (d.pmt && d.pmt !== cpmt) {
-        let updatePmt = `UPDATE ga2.tpermintaan_hdr SET pmt_approval=1, pmt_buyed=1`;
-        if (d.gabrg === 0) updatePmt += `, pmt_close=1`;
-        updatePmt += ` WHERE pmt_nomor=?`;
-        await conn.query(updatePmt, [d.pmt]);
+        await conn.query(
+          `UPDATE ga.tpermintaan_hdr SET pmt_approval=1, pmt_buyed=1 WHERE pmt_nomor=?`,
+          [d.pmt],
+        );
         cpmt = d.pmt;
+      }
+
+      // Isi balik tkasbon.bon_pjh_nomor kalau kasbon ini belum terhubung ke
+      // pengajuan manapun — supaya kolom PJH/Status Finance di browse Uang
+      // Muka tetap berfungsi meski nomor pengajuan tidak lagi dipilih di
+      // header saat kasbon dibuat.
+      if (d.pjh) {
+        await conn.query(
+          `UPDATE tkasbon SET bon_pjh_nomor = ? WHERE bon_nomor = ? AND (bon_pjh_nomor = '' OR bon_pjh_nomor IS NULL)`,
+          [d.pjh, nomor],
+        );
       }
 
       // GA (ga=1) → update tpermintaan_dtl
       if (d.ga === 1) {
         if (!v) {
           // Tidak diverifikasi
-          let sql = `UPDATE ga2.tpermintaan_dtl SET
+          let sql = `UPDATE ga.tpermintaan_dtl SET
             pmd_qty_buyed=0, pmd_nilai_buyed=0, pmd_verified_buyed=0,
             pmd_bon=?`;
           if (d.gabrg === 0)
@@ -539,7 +557,7 @@ const saveData = async (payload, user) => {
           await conn.query(sql, [nomor, d.pmt, d.no]);
         } else {
           // Diverifikasi
-          let sql = `UPDATE ga2.tpermintaan_dtl SET
+          let sql = `UPDATE ga.tpermintaan_dtl SET
             pmd_qty_buyed=?, pmd_nilai_buyed=?, pmd_verified_buyed=?,
             pmd_rek_kode=?, pmd_cc_kode=?, pmd_dcnama=?, pmd_bon=?,
             pmd_tanggal_approved=CURDATE(), pmd_user_approved=?,
@@ -815,6 +833,26 @@ const saveData = async (payload, user) => {
       } // nourut sudah di-increment di atas
     }
 
+    // ── Tutup pmt HANYA kalau semua itemnya sudah dispositioned (approved+
+    // dibeli, ATAU reject) — bukan otomatis begitu 1 baris disentuh, supaya
+    // bisa direalisasi bertahap lewat beberapa Uang Muka. ──
+    const affectedPmt = new Set(
+      detail.filter((d) => d.pmt && d.uraian).map((d) => d.pmt),
+    );
+    for (const pmt of affectedPmt) {
+      const [[sisa]] = await conn.query(
+        `SELECT COUNT(*) AS cnt FROM ga.tpermintaan_dtl
+     WHERE pmd_pmt_nomor = ? AND pmd_bon = '' AND pmd_tanggal_reject IS NULL`,
+        [pmt],
+      );
+      if (Number(sisa.cnt) === 0) {
+        await conn.query(
+          `UPDATE ga.tpermintaan_hdr SET pmt_close = 1 WHERE pmt_nomor = ?`,
+          [pmt],
+        );
+      }
+    }
+
     await conn.commit();
     return { nomor, no_bkk: noBkk };
   } catch (e) {
@@ -854,39 +892,52 @@ const getDcOptions = async (cckode) => {
 // ── Bantuan F1: Pengajuan GA ──────────────────────────────────────────
 const getListPengajuanGA = async (cabang) => {
   let sql = `
-    SELECT h.pmt_pjh_nomor AS nomor, DATE_FORMAT(j.pjh_tanggal,"%d-%m-%Y") AS tanggal,
-      j.pjh_ke, j.pjh_user_kode AS nama, h.pmt_keterangan AS keterangan
-    FROM ga2.tpermintaan_hdr h
-    INNER JOIN ga2.tpengajuan2_hdr j ON j.pjh_nomor=h.pmt_pjh_nomor
-    WHERE h.pmt_approval = 0
+    SELECT j.pjh_nomor AS nomor, DATE_FORMAT(j.pjh_tanggal,"%d-%m-%Y") AS tanggal,
+      j.pjh_ke, j.pjh_user_kode AS nama, j.pjh_keterangan AS keterangan
+    FROM ga.tpengajuan2_hdr j
+    LEFT JOIN ga.tpermintaan_hdr h ON h.pmt_pjh_nomor = j.pjh_nomor
+    WHERE j.pjh_nonga = 0
+      AND (
+        h.pmt_nomor IS NULL
+        OR (
+          h.pmt_close = 0
+          AND EXISTS (
+            SELECT 1 FROM ga.tpermintaan_dtl d
+            WHERE d.pmd_pmt_nomor = h.pmt_nomor AND d.pmd_bon = ''
+          )
+        )
+      )
   `;
   const params = [];
   if (cabang && cabang !== "P01") {
     sql += ` AND j.pjh_ke = ?`;
     params.push(cabang);
   }
-  sql += ` ORDER BY j.pjh_tanggal DESC, h.pmt_pjh_nomor DESC`; // 👈 Ubah ini
-
+  sql += ` ORDER BY j.pjh_tanggal DESC, j.pjh_nomor DESC`;
   const [rows] = await db.query(sql, params);
   return rows;
 };
 
 const getDetailPengajuanGA = async (pjhNomor) => {
+  await ensurePermintaan(pjhNomor);
+
   const [rows] = await db.query(
     `SELECT h.pmt_nomor, d.pmd_nourut, d.pmd_nama, d.pmd_spesifikasi,
       d.pmd_qty_riil, d.pmd_satuan, d.pmd_qty_buyed, d.pmd_nilai,
       d.pmd_nilai_buyed, d.pmd_dana_approved, d.pmd_tanggal_reject, d.pmd_bon,
       d.pmd_kegunaan, (d.pmd_qty_riil * d.pmd_nilai) AS total, d.pmd_verified_buyed,
       h.pmt_buyed, d.pmd_nilai_terpakai, d.pmd_tanggal_approved, d.pmd_tanggal_buyed,
-      j.pjh_jenis_permintaan, j.pjh_nonga
-    FROM ga2.tpermintaan_dtl d
-    INNER JOIN ga2.tpermintaan_hdr h ON h.pmt_nomor = d.pmd_pmt_nomor
-    LEFT JOIN ga2.tpengajuan2_hdr j ON j.pjh_nomor = h.pmt_pjh_nomor
+      j.pjh_jenis_permintaan, j.pjh_nonga,
+      d.pmd_cc_kode, d.pmd_dcnama, cc.cc_nama
+    FROM ga.tpermintaan_dtl d
+    INNER JOIN ga.tpermintaan_hdr h ON h.pmt_nomor = d.pmd_pmt_nomor
+    LEFT JOIN ga.tpengajuan2_hdr j ON j.pjh_nomor = h.pmt_pjh_nomor
+    LEFT JOIN tcostcenter cc ON cc.cc_kode = d.pmd_cc_kode
     WHERE h.pmt_pjh_nomor = ?
+      AND d.pmd_bon = ''
     ORDER BY d.pmd_nourut`,
     [pjhNomor],
   );
-
   return rows.map((r) => {
     const isGabrg =
       (r.pjh_jenis_permintaan || "").toUpperCase() === "PERMINTAAN BARANG" &&
@@ -903,10 +954,10 @@ const getDetailPengajuanGA = async (pjhNomor) => {
       total: Number(r.total),
       guna: r.pmd_kegunaan || "",
       verified: true,
-      ga: 1, // ← GA = 1
-      cckode: 0,
-      ccnama: "",
-      dcnama: "",
+      ga: 1,
+      cckode: r.pmd_cc_kode || 0, // ⬅ ganti sumbernya
+      ccnama: r.cc_nama || "", // ⬅
+      dcnama: r.pmd_dcnama || "", // ⬅
       rekkode: "",
       reknama: "",
       edit: 0,
@@ -924,6 +975,30 @@ const getDetailPengajuanGA = async (pjhNomor) => {
       pjh_link: "",
     };
   });
+};
+
+// ── Update Status Finance (Pending/Menunggu Pembelian/Bulan Depan/
+// Otorisasi) — sekarang per-pengajuan (pjh_nomor), bukan per-kasbon,
+// karena satu kasbon bisa berisi baris dari banyak pengajuan berbeda,
+// dan satu pengajuan bisa tersebar di banyak kasbon (partial disbursement).
+const updateStatusFinance = async (pjhNomor, status) => {
+  const validStatus = [
+    "PENDING",
+    "MENUNGGU_PEMBELIAN",
+    "BULAN_DEPAN",
+    "OTORISASI",
+    null,
+  ];
+  if (!validStatus.includes(status)) throw new Error("Status tidak valid.");
+
+  const [result] = await db.query(
+    `UPDATE ga.tpermintaan_hdr SET pmt_status_finance = ? WHERE pmt_pjh_nomor = ?`,
+    [status, pjhNomor],
+  );
+  if (result.affectedRows === 0)
+    throw new Error(
+      "Permintaan untuk pengajuan ini belum ada — tarik dulu lewat F1.",
+    );
 };
 
 // ── Bantuan F2: PO External ───────────────────────────────────────────
@@ -978,33 +1053,29 @@ const getListPermintaanGarmen = async (cabang) => {
         WHERE d.mbd_nomor = h.mb_nomor
           AND d.mbd_jumlah > (
             IFNULL((
-              -- Qty sudah di-PO (PO belum CLOSE)
-              SELECT SUM(pd.pod_jumlah)
-              FROM kencanaprint.tgarmenpo_dtl pd
-              INNER JOIN kencanaprint.tgarmenpo_hdr ph ON ph.po_nomor = pd.pod_nomor
-              WHERE ph.po_mb_nomor = h.mb_nomor
-                AND pd.pod_brg_kode = d.mbd_brg_kode
-                AND ph.po_status NOT LIKE '%CLOSE%'
+              SELECT SUM(dd.bpbd_jumlah)
+              FROM kencanaprint.tgarmenbpb_hdr hh
+              INNER JOIN kencanaprint.tgarmenbpb_dtl dd ON dd.bpbd_nomor = hh.bpb_nomor
+              WHERE hh.bpb_mb_nomor = d.mbd_nomor AND dd.bpbd_brg_kode = d.mbd_brg_kode
             ), 0)
             +
             IFNULL((
-              -- Qty sudah di-PO dan sudah CLOSE (realisasi via BPB)
-              SELECT SUM(bd.bpbd_jumlah)
-              FROM kencanaprint.tgarmenpo_dtl pd
-              INNER JOIN kencanaprint.tgarmenpo_hdr ph ON ph.po_nomor = pd.pod_nomor
-              INNER JOIN kencanaprint.tgarmenbpb_dtl bd ON bd.bpbd_brg_kode = pd.pod_brg_kode
-              INNER JOIN kencanaprint.tgarmenbpb_hdr bh ON bh.bpb_nomor = bd.bpbd_nomor
-              WHERE ph.po_mb_nomor = h.mb_nomor
-                AND pd.pod_brg_kode = d.mbd_brg_kode
-                AND ph.po_status LIKE '%CLOSE%'
-                AND bh.bpb_po_nomor = pd.pod_nomor
+              SELECT SUM(msod_jumlah)
+              FROM kencanaprint.tgarmenmso_dtl
+              WHERE msod_msi_nomor <> ''
+                AND msod_mb_nomor = d.mbd_nomor
+                AND msod_brg_kode = d.mbd_brg_kode
             ), 0)
+          )
+          AND NOT EXISTS (
+            SELECT 1 FROM kencanaprint.tgarmenmintabeli_dtl2 c
+            WHERE c.mbd2_nomor = d.mbd_nomor AND c.mbd2_brg_kode = d.mbd_brg_kode
           )
       )
   `;
   const params = [];
   if (cabang === "P01") {
-    sql += ` AND (h.mb_mintake = 'HO' OR h.mb_mintake = 'HO-')`;
+    sql += ` AND (h.mb_mintake = 'P01' OR h.mb_mintake = 'HO' OR h.mb_mintake = 'HO-')`;
   } else if (cabang) {
     sql += ` AND h.mb_mintake = ?`;
     params.push(cabang);
@@ -1016,13 +1087,32 @@ const getListPermintaanGarmen = async (cabang) => {
 };
 
 const getDetailPermintaanGarmen = async (mbNomor) => {
-  // Sesuai logika Delphi: if(b.brg_note="",concat(b.brg_nama,d.mbd_ket),concat(b.brg_nama," - ",b.brg_note," ",d.mbd_ket))
   const [rows] = await db.query(
     `SELECT h.*, d.*, b.brg_satuan,
       IF(IFNULL(b.brg_note,'') = '', 
-         CONCAT(IFNULL(b.brg_nama,''), ' ', IFNULL(d.mbd_ket,'')), 
-         CONCAT(IFNULL(b.brg_nama,''), ' - ', b.brg_note, ' ', IFNULL(d.mbd_ket,''))
-      ) AS nama
+        CONCAT(IFNULL(b.brg_nama,''), ' ', IFNULL(d.mbd_ket,'')), 
+        CONCAT(IFNULL(b.brg_nama,''), ' - ', b.brg_note, ' ', IFNULL(d.mbd_ket,''))
+      ) AS nama,
+      (
+        IFNULL((
+          SELECT SUM(dd.bpbd_jumlah)
+          FROM kencanaprint.tgarmenbpb_hdr hh
+          INNER JOIN kencanaprint.tgarmenbpb_dtl dd ON dd.bpbd_nomor = hh.bpb_nomor
+          WHERE hh.bpb_mb_nomor = d.mbd_nomor AND dd.bpbd_brg_kode = d.mbd_brg_kode
+        ), 0)
+        +
+        IFNULL((
+          SELECT SUM(msod_jumlah)
+          FROM kencanaprint.tgarmenmso_dtl
+          WHERE msod_msi_nomor <> ''
+            AND msod_mb_nomor = d.mbd_nomor
+            AND msod_brg_kode = d.mbd_brg_kode
+        ), 0)
+      ) AS sudahTerima,
+      IF(EXISTS (
+        SELECT 1 FROM kencanaprint.tgarmenmintabeli_dtl2 c
+        WHERE c.mbd2_nomor = d.mbd_nomor AND c.mbd2_brg_kode = d.mbd_brg_kode
+      ), 1, 0) AS sudahProsesBeli
     FROM kencanaprint.tgarmenmintabeli_dtl d
     LEFT JOIN kencanaprint.tgarmenmintabeli_hdr h ON h.mb_nomor = d.mbd_nomor
     LEFT JOIN kencanaprint.tgarmen_brg b ON b.brg_kode = d.mbd_brg_kode
@@ -1031,38 +1121,44 @@ const getDetailPermintaanGarmen = async (mbNomor) => {
     [mbNomor],
   );
 
-  return rows.map((r) => ({
-    pmt: "",
-    no: r.mbd_nourut,
-    pjh: r.mbd_nomor,
-    mb: r.mbd_nomor,
-    uraian: r.nama,
-    spesifikasi: r.mbd_ket || "",
-    satuan: r.brg_satuan || "",
-    qty: Number(r.mbd_jumlah),
-    harga: 0,
-    total: 0,
-    guna: r.mbd_kegunaan || "",
-    verified: true,
-    ga: 0, // ← tambah ini
-    gabrg: 1,
-    kdbrg: r.mbd_brg_kode,
-    jenis_item: r.mb_jenis, // ← rename dari jenis
-    cab_item: r.mb_cab, // ← rename dari cab
-    rekkode: "",
-    reknama: "",
-    cckode: 0,
-    ccnama: "",
-    dcnama: "",
-    kdsup: "",
-    supplier: "",
-    bank: "",
-    rekening: "",
-    atasnama: "",
-    edit: 0,
-    pjh_link: r.mbd_nomor,
-    dckode: 0,
-  }));
+  return rows
+    .filter(
+      (r) =>
+        Number(r.mbd_jumlah) > Number(r.sudahTerima || 0) &&
+        Number(r.sudahProsesBeli) === 0,
+    )
+    .map((r) => ({
+      pmt: "",
+      no: r.mbd_nourut,
+      pjh: r.mbd_nomor,
+      mb: r.mbd_nomor,
+      uraian: r.nama,
+      spesifikasi: r.mbd_ket || "",
+      satuan: r.brg_satuan || "",
+      qty: Number(r.mbd_jumlah) - Number(r.sudahTerima || 0),
+      harga: 0,
+      total: 0,
+      guna: r.mbd_kegunaan || "",
+      verified: true,
+      ga: 0,
+      gabrg: 1,
+      kdbrg: r.mbd_brg_kode,
+      jenis_item: r.mb_jenis,
+      cab_item: r.mb_cab,
+      rekkode: "",
+      reknama: "",
+      cckode: 0,
+      ccnama: "",
+      dcnama: "",
+      kdsup: "",
+      supplier: "",
+      bank: "",
+      rekening: "",
+      atasnama: "",
+      edit: 0,
+      pjh_link: r.mbd_nomor,
+      dckode: 0,
+    }));
 };
 
 // ── Bantuan F5: Invoice Garmen ────────────────────────────────────────
@@ -1242,4 +1338,5 @@ module.exports = {
   getListInvoiceGarmen,
   getDetailInvoiceGarmen,
   createSupplier,
+  updateStatusFinance,
 };

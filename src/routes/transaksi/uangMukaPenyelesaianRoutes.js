@@ -65,6 +65,11 @@ router.get(
   checkPermission(menuId, "view"),
   ctrl.getDetailPengajuanGA,
 );
+router.patch(
+  "/pengajuan/:pjhNomor/status-finance",
+  verifyToken,
+  ctrl.updateStatusFinance,
+);
 
 router.get(
   "/po-external",
