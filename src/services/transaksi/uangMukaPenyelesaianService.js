@@ -83,7 +83,7 @@ const getFormData = async (nomor) => {
       total: qty * harga,
       verified: isEdit ? Number(r.verified_raw) !== 0 : true,
       guna: "",
-      ga: 2, // non-GA existing
+      ga2: 2, // non-GA existing
       rekkode: r.rekkode || "",
       reknama: r.rek_nama || "",
       cckode: r.cckode || 0,
@@ -124,10 +124,10 @@ const getFormData = async (nomor) => {
       r.rek_nama, d.pmd_cc_kode, c.cc_nama, d.pmd_dcnama,
       j.pjh_cc_kode, j.pjh_cc_dcnama, pcc.cc_nama AS pjh_cc_nama
     FROM tkasbon k
-    INNER JOIN ga.tpermintaan_dtl d ON d.pmd_bon = k.bon_nomor
-    INNER JOIN ga.tpermintaan_hdr h ON h.pmt_nomor = d.pmd_pmt_nomor
-    INNER JOIN ga.tpengajuan2_hdr j ON j.pjh_nomor = h.pmt_pjh_nomor
-    INNER JOIN ga.peminta p ON p.nik = j.pjh_nik
+    INNER JOIN ga2.tpermintaan_dtl d ON d.pmd_bon = k.bon_nomor
+    INNER JOIN ga2.tpermintaan_hdr h ON h.pmt_nomor = d.pmd_pmt_nomor
+    INNER JOIN ga2.tpengajuan2_hdr j ON j.pjh_nomor = h.pmt_pjh_nomor
+    INNER JOIN ga2.peminta p ON p.nik = j.pjh_nik
     LEFT JOIN trekening r ON r.rek_kode = d.pmd_rek_kode
     LEFT JOIN tcostcenter c ON c.cc_kode = d.pmd_cc_kode
     LEFT JOIN tcostcenter pcc ON pcc.cc_kode = j.pjh_cc_kode
@@ -187,7 +187,7 @@ const getFormData = async (nomor) => {
         total: qty * harga,
         verified: isEdit ? Number(r.pmd_verified_buyed) !== 0 : true,
         guna: r.pmd_kegunaan || "",
-        ga: 1,
+        ga2: 1,
         rekkode: r.pmd_rek_kode || "",
         reknama: r.rek_nama || "",
         // Prioritas: nilai yang SUDAH pernah disimpan Finance (pmd_cc_kode),
@@ -245,7 +245,7 @@ const getFormData = async (nomor) => {
     total: Number(r.bond2_qty_realisasi) * Number(r.bond2_nominal_realisasi),
     verified: true,
     guna: "",
-    ga: 0,
+    ga2: 0,
     rekkode: r.bond2_rek_kode || "",
     reknama: r.rek_nama || "",
     cckode: r.bond2_cc_kode || 0,
@@ -497,8 +497,8 @@ const saveData = async (payload, user) => {
       const [[maxPjh]] = await conn.query(
         `
         SELECT IFNULL(MAX(x.nomer),0) AS max_val FROM (
-          SELECT d.pmd_nourut AS nomer FROM ga.tpermintaan_dtl d
-          LEFT JOIN ga.tpermintaan_hdr h ON h.pmt_nomor=d.pmd_pmt_nomor
+          SELECT d.pmd_nourut AS nomer FROM ga2.tpermintaan_dtl d
+          LEFT JOIN ga2.tpermintaan_hdr h ON h.pmt_nomor=d.pmd_pmt_nomor
           WHERE h.pmt_pjh_nomor=?
           UNION
           SELECT bond_nourut AS nomer FROM tkasbonitem WHERE bond_nomor=?
@@ -527,7 +527,7 @@ const saveData = async (payload, user) => {
       // Update pmt_approval + pmt_buyed jika pmt berubah
       if (d.pmt && d.pmt !== cpmt) {
         await conn.query(
-          `UPDATE ga.tpermintaan_hdr SET pmt_approval=1, pmt_buyed=1 WHERE pmt_nomor=?`,
+          `UPDATE ga2.tpermintaan_hdr SET pmt_approval=1, pmt_buyed=1 WHERE pmt_nomor=?`,
           [d.pmt],
         );
         cpmt = d.pmt;
@@ -544,11 +544,11 @@ const saveData = async (payload, user) => {
         );
       }
 
-      // GA (ga=1) → update tpermintaan_dtl
-      if (d.ga === 1) {
+      // GA (ga2=1) → update tpermintaan_dtl
+      if (d.ga2 === 1) {
         if (!v) {
           // Tidak diverifikasi
-          let sql = `UPDATE ga.tpermintaan_dtl SET
+          let sql = `UPDATE ga2.tpermintaan_dtl SET
             pmd_qty_buyed=0, pmd_nilai_buyed=0, pmd_verified_buyed=0,
             pmd_bon=?`;
           if (d.gabrg === 0)
@@ -557,7 +557,7 @@ const saveData = async (payload, user) => {
           await conn.query(sql, [nomor, d.pmt, d.no]);
         } else {
           // Diverifikasi
-          let sql = `UPDATE ga.tpermintaan_dtl SET
+          let sql = `UPDATE ga2.tpermintaan_dtl SET
             pmd_qty_buyed=?, pmd_nilai_buyed=?, pmd_verified_buyed=?,
             pmd_rek_kode=?, pmd_cc_kode=?, pmd_dcnama=?, pmd_bon=?,
             pmd_tanggal_approved=CURDATE(), pmd_user_approved=?,
@@ -584,8 +584,8 @@ const saveData = async (payload, user) => {
         }
       }
 
-      // Non-GA existing (ga=2) → update tkasbonitem
-      if (d.ga === 2) {
+      // Non-GA existing (ga2=2) → update tkasbonitem
+      if (d.ga2 === 2) {
         await conn.query(
           `
           UPDATE tkasbonitem SET
@@ -614,8 +614,8 @@ const saveData = async (payload, user) => {
         );
       }
 
-      // Non-GA baru (ga=0) → insert tkasbonitem2
-      if (d.ga === 0) {
+      // Non-GA baru (ga2=0) → insert tkasbonitem2
+      if (d.ga2 === 0) {
         const hasPjhLink =
           ["POE", "VOU"].includes((d.pjh || "").substring(0, 3)) ||
           ["MBA", "MBO", "MBS", "MBK"].includes(
@@ -720,7 +720,7 @@ const saveData = async (payload, user) => {
       if (v && totalTerpakai !== 0 && noBkk) {
         const cUraian =
           `${d.uraian} ${d.spesifikasi || ""} ${d.qty} ${d.satuan || ""}${d.guna ? ` (${d.guna})` : ""}`.trim();
-        const noUrut = d.ga !== 0 ? d.no : nourut - 1;
+        const noUrut = d.ga2 !== 0 ? d.no : nourut - 1;
 
         await conn.query(
           `
@@ -829,7 +829,7 @@ const saveData = async (payload, user) => {
         }
       }
 
-      if (d.ga === 0) {
+      if (d.ga2 === 0) {
       } // nourut sudah di-increment di atas
     }
 
@@ -841,13 +841,13 @@ const saveData = async (payload, user) => {
     );
     for (const pmt of affectedPmt) {
       const [[sisa]] = await conn.query(
-        `SELECT COUNT(*) AS cnt FROM ga.tpermintaan_dtl
+        `SELECT COUNT(*) AS cnt FROM ga2.tpermintaan_dtl
      WHERE pmd_pmt_nomor = ? AND pmd_bon = '' AND pmd_tanggal_reject IS NULL`,
         [pmt],
       );
       if (Number(sisa.cnt) === 0) {
         await conn.query(
-          `UPDATE ga.tpermintaan_hdr SET pmt_close = 1 WHERE pmt_nomor = ?`,
+          `UPDATE ga2.tpermintaan_hdr SET pmt_close = 1 WHERE pmt_nomor = ?`,
           [pmt],
         );
       }
@@ -894,15 +894,15 @@ const getListPengajuanGA = async (cabang) => {
   let sql = `
     SELECT j.pjh_nomor AS nomor, DATE_FORMAT(j.pjh_tanggal,"%d-%m-%Y") AS tanggal,
       j.pjh_ke, j.pjh_user_kode AS nama, j.pjh_keterangan AS keterangan
-    FROM ga.tpengajuan2_hdr j
-    LEFT JOIN ga.tpermintaan_hdr h ON h.pmt_pjh_nomor = j.pjh_nomor
+    FROM ga2.tpengajuan2_hdr j
+    LEFT JOIN ga2.tpermintaan_hdr h ON h.pmt_pjh_nomor = j.pjh_nomor
     WHERE j.pjh_nonga = 0
       AND (
         h.pmt_nomor IS NULL
         OR (
           h.pmt_close = 0
           AND EXISTS (
-            SELECT 1 FROM ga.tpermintaan_dtl d
+            SELECT 1 FROM ga2.tpermintaan_dtl d
             WHERE d.pmd_pmt_nomor = h.pmt_nomor AND d.pmd_bon = ''
           )
         )
@@ -929,9 +929,9 @@ const getDetailPengajuanGA = async (pjhNomor) => {
       h.pmt_buyed, d.pmd_nilai_terpakai, d.pmd_tanggal_approved, d.pmd_tanggal_buyed,
       j.pjh_jenis_permintaan, j.pjh_nonga,
       d.pmd_cc_kode, d.pmd_dcnama, cc.cc_nama
-    FROM ga.tpermintaan_dtl d
-    INNER JOIN ga.tpermintaan_hdr h ON h.pmt_nomor = d.pmd_pmt_nomor
-    LEFT JOIN ga.tpengajuan2_hdr j ON j.pjh_nomor = h.pmt_pjh_nomor
+    FROM ga2.tpermintaan_dtl d
+    INNER JOIN ga2.tpermintaan_hdr h ON h.pmt_nomor = d.pmd_pmt_nomor
+    LEFT JOIN ga2.tpengajuan2_hdr j ON j.pjh_nomor = h.pmt_pjh_nomor
     LEFT JOIN tcostcenter cc ON cc.cc_kode = d.pmd_cc_kode
     WHERE h.pmt_pjh_nomor = ?
       AND d.pmd_bon = ''
@@ -954,7 +954,7 @@ const getDetailPengajuanGA = async (pjhNomor) => {
       total: Number(r.total),
       guna: r.pmd_kegunaan || "",
       verified: true,
-      ga: 1,
+      ga2: 1,
       cckode: r.pmd_cc_kode || 0, // ⬅ ganti sumbernya
       ccnama: r.cc_nama || "", // ⬅
       dcnama: r.pmd_dcnama || "", // ⬅
@@ -992,7 +992,7 @@ const updateStatusFinance = async (pjhNomor, status) => {
   if (!validStatus.includes(status)) throw new Error("Status tidak valid.");
 
   const [result] = await db.query(
-    `UPDATE ga.tpermintaan_hdr SET pmt_status_finance = ? WHERE pmt_pjh_nomor = ?`,
+    `UPDATE ga2.tpermintaan_hdr SET pmt_status_finance = ? WHERE pmt_pjh_nomor = ?`,
     [status, pjhNomor],
   );
   if (result.affectedRows === 0)
@@ -1140,7 +1140,7 @@ const getDetailPermintaanGarmen = async (mbNomor) => {
       total: 0,
       guna: r.mbd_kegunaan || "",
       verified: true,
-      ga: 0,
+      ga2: 0,
       gabrg: 1,
       kdbrg: r.mbd_brg_kode,
       jenis_item: r.mb_jenis,
@@ -1208,7 +1208,7 @@ const getDetailInvoiceGarmen = async (ivNomor) => {
       total: qty * harga,
       guna: r.ivd_kegunaan || "",
       verified: true,
-      ga: 0, // ← tambah ini
+      ga2: 0, // ← tambah ini
       gabrg: 1,
       jenis_item: r.iv_jenis, // ← rename
       cab_item: r.cab, // ← rename

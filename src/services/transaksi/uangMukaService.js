@@ -22,7 +22,7 @@ const getBrowse = async (startDate, endDate, cabang) => {
       IF(b.bon_selesai=0,'Belum','Sudah') AS Selesai,
       IF(IFNULL((SELECT h.jur_close FROM tjurnal h WHERE h.jur_no = b.bon_jur_no), 0)=0,'Belum','Sudah') AS Closed,
       (SELECT pmt.pmt_status_finance
-      FROM ga.tpermintaan_hdr pmt
+      FROM ga2.tpermintaan_hdr pmt
       WHERE pmt.pmt_pjh_nomor = b.bon_pjh_nomor
       ORDER BY pmt.pmt_nomor DESC LIMIT 1) AS StatusFinance
     FROM tkasbon b
@@ -52,15 +52,15 @@ const deleteData = async (nomor, cabang) => {
   const conn = await db.getConnection();
   await conn.beginTransaction();
   try {
-    // Reset tpermintaan_hdr di DB ga (cross-DB)
+    // Reset tpermintaan_hdr di DB ga2 (cross-DB)
     if (bon.bon_pjh_nomor) {
       await conn.query(
-        `UPDATE ga.tpermintaan_hdr SET pmt_approval = 0
+        `UPDATE ga2.tpermintaan_hdr SET pmt_approval = 0
          WHERE pmt_pjh_nomor = ?`,
         [bon.bon_pjh_nomor],
       );
       await conn.query(
-        `UPDATE ga.tpermintaan_dtl SET
+        `UPDATE ga2.tpermintaan_dtl SET
            pmd_tanggal_approved = NULL, pmd_user_approved = '',
            pmd_bon = '', pmd_dana_approved = 0,
            pmd_user_reject = '', pmd_tanggal_reject = NULL,
@@ -104,7 +104,7 @@ const getBrowsePendingAll = async () => {
        pmt.pmt_status_finance AS StatusFinance
      FROM tkasbon b
      LEFT JOIN trekening r ON r.rek_kode = b.bon_rek_kode
-     LEFT JOIN ga.tpermintaan_hdr pmt ON pmt.pmt_pjh_nomor = b.bon_pjh_nomor
+     LEFT JOIN ga2.tpermintaan_hdr pmt ON pmt.pmt_pjh_nomor = b.bon_pjh_nomor
      WHERE b.bon_selesai = 0
      ORDER BY b.bon_tanggal`,
   );
@@ -134,7 +134,7 @@ const updateStatusFinance = async (bonNomor, status) => {
     throw new Error("Sudah ada penyelesaian. Status tidak bisa diubah lagi.");
 
   const [result] = await db.query(
-    `UPDATE ga.tpermintaan_hdr SET pmt_status_finance = ? WHERE pmt_pjh_nomor = ?`,
+    `UPDATE ga2.tpermintaan_hdr SET pmt_status_finance = ? WHERE pmt_pjh_nomor = ?`,
     [status, bon.bon_pjh_nomor],
   );
   if (result.affectedRows === 0)

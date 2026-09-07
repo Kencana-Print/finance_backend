@@ -26,7 +26,7 @@ const generateMntNomor = async (tanggal, conn) => {
   const yyyymm = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}`;
   const [[row]] = await (conn || db).query(
     `SELECT IFNULL(MAX(CAST(RIGHT(pmt_nomor, 4) AS UNSIGNED)), 0) AS maxVal
-     FROM ga.tpermintaan_hdr WHERE pmt_nomor LIKE ?`,
+     FROM ga2.tpermintaan_hdr WHERE pmt_nomor LIKE ?`,
     [`MNT.${yyyymm}.%`],
   );
   const next = Number(row.maxVal) + 1;
@@ -39,21 +39,21 @@ const generateMntNomor = async (tanggal, conn) => {
 const ensurePermintaan = async (pjhNomor, conn) => {
   const c = conn || db;
   const [[existing]] = await c.query(
-    `SELECT pmt_nomor FROM ga.tpermintaan_hdr WHERE pmt_pjh_nomor = ?`,
+    `SELECT pmt_nomor FROM ga2.tpermintaan_hdr WHERE pmt_pjh_nomor = ?`,
     [pjhNomor],
   );
   if (existing) return existing.pmt_nomor;
 
   const [[header]] = await c.query(
     `SELECT pjh_tanggal, pjh_cc_kode, pjh_cc_dcnama
-     FROM ga.tpengajuan2_hdr WHERE pjh_nomor = ?`,
+     FROM ga2.tpengajuan2_hdr WHERE pjh_nomor = ?`,
     [pjhNomor],
   );
   if (!header) throw new Error("Pengajuan tidak ditemukan.");
 
   const pmtNomor = await generateMntNomor(header.pjh_tanggal, c);
   await c.query(
-    `INSERT INTO ga.tpermintaan_hdr (pmt_nomor, pmt_tanggal, pmt_pjh_nomor, pmt_keterangan)
+    `INSERT INTO ga2.tpermintaan_hdr (pmt_nomor, pmt_tanggal, pmt_pjh_nomor, pmt_keterangan)
      VALUES (?, CURDATE(), ?, '')`,
     [pmtNomor, pjhNomor],
   );
@@ -61,13 +61,13 @@ const ensurePermintaan = async (pjhNomor, conn) => {
   const [items] = await c.query(
     `SELECT pjd_nourut, pjd_nama, pjd_spesifikasi, pjd_qty, pjd_nilai, pjd_satuan,
             pjd_kegunaan, pjd_jobkp, pjd_kode
-     FROM ga.tpengajuan2_dtl
+     FROM ga2.tpengajuan2_dtl
      WHERE pjd_pjh_nomor = ? AND pjd_nama <> ''`,
     [pjhNomor],
   );
   for (const item of items) {
     await c.query(
-      `INSERT INTO ga.tpermintaan_dtl
+      `INSERT INTO ga2.tpermintaan_dtl
          (pmd_pmt_nomor, pmd_nourut, pmd_nama, pmd_spesifikasi, pmd_qty, pmd_qty_riil,
           pmd_satuan, pmd_nilai, pmd_kegunaan, pmd_jobkp, pmd_kode,
           pmd_cc_kode, pmd_dcnama)
@@ -100,8 +100,8 @@ const getPengajuanOptions = async (cabang) => {
            j.pjh_ke AS ke,
            j.pjh_user_kode AS user_kode,
            j.pjh_keterangan AS keterangan
-    FROM ga.tpengajuan2_hdr j
-    LEFT JOIN ga.tpermintaan_hdr h ON h.pmt_pjh_nomor = j.pjh_nomor
+    FROM ga2.tpengajuan2_hdr j
+    LEFT JOIN ga2.tpermintaan_hdr h ON h.pmt_pjh_nomor = j.pjh_nomor
     WHERE j.pjh_nonga = 0
       AND j.pjh_nomor NOT IN (
         SELECT bon_pjh_nomor FROM tkasbon WHERE bon_pjh_nomor <> ''
@@ -145,10 +145,10 @@ const getDetailPengajuan = async (pjhNomor) => {
       d.pmd_nourut, d.pmd_nama, d.pmd_spesifikasi, d.pmd_qty_riil,
       d.pmd_satuan, d.pmd_nilai, d.pmd_dana_approved,
       d.pmd_tanggal_reject, d.pmd_tanggal_approved, d.pmd_kegunaan, d.pmd_bon
-    FROM ga.tpermintaan_hdr h
-    INNER JOIN ga.tpengajuan2_hdr j ON j.pjh_nomor = h.pmt_pjh_nomor
-    INNER JOIN ga.peminta p ON p.nik = j.pjh_nik
-    INNER JOIN ga.tpermintaan_dtl d ON d.pmd_pmt_nomor = h.pmt_nomor
+    FROM ga2.tpermintaan_hdr h
+    INNER JOIN ga2.tpengajuan2_hdr j ON j.pjh_nomor = h.pmt_pjh_nomor
+    INNER JOIN ga2.peminta p ON p.nik = j.pjh_nik
+    INNER JOIN ga2.tpermintaan_dtl d ON d.pmd_pmt_nomor = h.pmt_nomor
     WHERE d.pmd_kode_reject <> 1 AND h.pmt_close = 0
       AND h.pmt_pjh_nomor = ?
     ORDER BY d.pmd_nourut
@@ -175,7 +175,7 @@ const getDetailPengajuan = async (pjhNomor) => {
       approved: isApproval0 ? true : !r.pmd_tanggal_approved ? false : true,
       reject: isApproval0 ? false : !r.pmd_tanggal_reject ? false : true,
       kegunaan: r.pmd_kegunaan,
-      ga: 1, // dari pengajuan GA
+      ga2: 1, // dari pengajuan GA
       kdsup: "",
       supplier: "",
       bank: "",
@@ -222,10 +222,10 @@ const getDetailForm = async (nomor) => {
       d.pmd_tanggal_reject, d.pmd_tanggal_approved,
       d.pmd_kegunaan, d.pmd_bon
     FROM tkasbon k
-    LEFT JOIN ga.tpermintaan_dtl d ON d.pmd_bon = k.bon_nomor
-    LEFT JOIN ga.tpermintaan_hdr h ON h.pmt_nomor = d.pmd_pmt_nomor
-    LEFT JOIN ga.tpengajuan2_hdr j ON j.pjh_nomor = h.pmt_pjh_nomor
-    LEFT JOIN ga.peminta p ON p.nik = j.pjh_nik
+    LEFT JOIN ga2.tpermintaan_dtl d ON d.pmd_bon = k.bon_nomor
+    LEFT JOIN ga2.tpermintaan_hdr h ON h.pmt_nomor = d.pmd_pmt_nomor
+    LEFT JOIN ga2.tpengajuan2_hdr j ON j.pjh_nomor = h.pmt_pjh_nomor
+    LEFT JOIN ga2.peminta p ON p.nik = j.pjh_nik
     LEFT JOIN trekening r ON r.rek_kode = k.bon_rek_kode
     WHERE k.bon_nomor = ?
     ORDER BY d.pmd_nourut
@@ -269,7 +269,7 @@ const getDetailForm = async (nomor) => {
         approved: isApproval0 ? true : !!r.pmd_tanggal_approved,
         reject: isApproval0 ? false : !!r.pmd_tanggal_reject,
         kegunaan: r.pmd_kegunaan || "",
-        ga: 1,
+        ga2: 1,
         kdsup: "",
         supplier: "",
         bank: "",
@@ -309,7 +309,7 @@ const getDetailForm = async (nomor) => {
     approved: true, // ← Delphi: CDSGrid.fieldbyname('Approved').AsBoolean := true
     reject: false, // ← Delphi: CDSGrid.fieldbyname('Reject').AsBoolean := false
     kegunaan: "",
-    ga: 0,
+    ga2: 0,
     kdsup: r.kdsup,
     supplier: r.supplier,
     bank: r.bank,
@@ -464,8 +464,8 @@ const saveData = async (payload, user) => {
       const [[maxRow]] = await conn.query(
         `
         SELECT IFNULL(MAX(d.pmd_nourut), 0) AS max_val
-        FROM ga.tpermintaan_dtl d
-        LEFT JOIN ga.tpermintaan_hdr h ON h.pmt_nomor = d.pmd_pmt_nomor
+        FROM ga2.tpermintaan_dtl d
+        LEFT JOIN ga2.tpermintaan_hdr h ON h.pmt_nomor = d.pmd_pmt_nomor
         WHERE h.pmt_pjh_nomor = ?
       `,
         [pjh_nomor],
@@ -478,8 +478,8 @@ const saveData = async (payload, user) => {
 
     for (const d of detail) {
       // ── Non-GA yang Approved → insert tkasbonitem ─────────────────
-      // Delphi: if Approved AND ga=0
-      if (d.approved && d.ga === 0) {
+      // Delphi: if Approved AND ga2=0
+      if (d.approved && d.ga2 === 0) {
         await conn.query(
           `
           INSERT INTO tkasbonitem
@@ -508,12 +508,12 @@ const saveData = async (payload, user) => {
       }
 
       // ── GA Approved → update tpermintaan_dtl approved ────────────
-      // Delphi: if Approved AND ga=1
-      if (d.approved && d.ga === 1) {
+      // Delphi: if Approved AND ga2=1
+      if (d.approved && d.ga2 === 1) {
         accCount++;
         await conn.query(
           `
-            UPDATE ga.tpermintaan_dtl SET
+            UPDATE ga2.tpermintaan_dtl SET
               pmd_tanggal_approved = CURDATE(),
               pmd_user_approved    = ?,
               pmd_dana_approved    = ?,
@@ -528,12 +528,12 @@ const saveData = async (payload, user) => {
       }
 
       // ── GA Reject → update tpermintaan_dtl reject ────────────────
-      // Delphi: if Reject AND ga=1
+      // Delphi: if Reject AND ga2=1
       // NOTE: Delphi cek reject TERPISAH dari approved (bisa keduanya false)
-      if (d.reject && d.ga === 1) {
+      if (d.reject && d.ga2 === 1) {
         await conn.query(
           `
-          UPDATE ga.tpermintaan_dtl SET
+          UPDATE ga2.tpermintaan_dtl SET
             pmd_tanggal_reject   = CURDATE(),
             pmd_kode_reject      = 2,
             pmd_user_reject      = ?,
@@ -552,19 +552,19 @@ const saveData = async (payload, user) => {
     // Delphi: if edtnomorpengajuan.Text <> ''
     if (pjh_nomor && pmt_nomor) {
       await conn.query(
-        `UPDATE ga.tpermintaan_hdr SET pmt_approval = 1 WHERE pmt_nomor = ?`,
+        `UPDATE ga2.tpermintaan_hdr SET pmt_approval = 1 WHERE pmt_nomor = ?`,
         [pmt_nomor],
       );
 
       // Delphi: if acc=0 → semua reject → close permintaan
       if (accCount === 0) {
         await conn.query(
-          `UPDATE ga.tpermintaan_hdr SET pmt_close = 1 WHERE pmt_nomor = ?`,
+          `UPDATE ga2.tpermintaan_hdr SET pmt_close = 1 WHERE pmt_nomor = ?`,
           [pmt_nomor],
         );
         await conn.query(
           `
-          UPDATE ga.tpermintaan_dtl SET
+          UPDATE ga2.tpermintaan_dtl SET
             pmd_tanggal_closed = CURDATE(),
             pmd_user_closed    = ?
           WHERE pmd_pmt_nomor = ?
@@ -625,8 +625,8 @@ const getPrintData = async (nomor) => {
       d.pmd_satuan AS satuan, d.pmd_qty_riil AS qty,
       d.pmd_kegunaan AS kegunaan,
       IFNULL(d.pmd_dana_approved, d.pmd_nilai) AS nilai
-    FROM ga.tpermintaan_dtl d
-    INNER JOIN ga.tpermintaan_hdr h ON h.pmt_nomor = d.pmd_pmt_nomor
+    FROM ga2.tpermintaan_dtl d
+    INNER JOIN ga2.tpermintaan_hdr h ON h.pmt_nomor = d.pmd_pmt_nomor
     WHERE d.pmd_bon = ? AND d.pmd_tanggal_approved IS NOT NULL
     ORDER BY d.pmd_nourut
   `,

@@ -54,13 +54,13 @@ router.post(
 // ── Routes Bantuan Pencarian (F1 - F5) ────────────────────────────────
 
 router.get(
-  "/pengajuan-ga",
+  "/pengajuan-ga2",
   verifyToken,
   checkPermission(menuId, "view"),
   ctrl.getListPengajuanGA,
 );
 router.get(
-  "/pengajuan-ga/detail/:nomor",
+  "/pengajuan-ga2/detail/:nomor",
   verifyToken,
   checkPermission(menuId, "view"),
   ctrl.getDetailPengajuanGA,
