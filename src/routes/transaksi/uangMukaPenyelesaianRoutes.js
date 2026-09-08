@@ -60,7 +60,7 @@ router.get(
   ctrl.getListPengajuanGA,
 );
 router.get(
-  "/pengajuan-ga2/detail/:nomor",
+  "/pengajuan-ga/detail/:nomor",
   verifyToken,
   checkPermission(menuId, "view"),
   ctrl.getDetailPengajuanGA,
