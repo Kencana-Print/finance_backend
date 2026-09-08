@@ -175,7 +175,7 @@ const getDetailPengajuan = async (pjhNomor) => {
       approved: isApproval0 ? true : !r.pmd_tanggal_approved ? false : true,
       reject: isApproval0 ? false : !r.pmd_tanggal_reject ? false : true,
       kegunaan: r.pmd_kegunaan,
-      ga2: 1, // dari pengajuan GA
+      ga: 1, // dari pengajuan GA
       kdsup: "",
       supplier: "",
       bank: "",
@@ -269,7 +269,7 @@ const getDetailForm = async (nomor) => {
         approved: isApproval0 ? true : !!r.pmd_tanggal_approved,
         reject: isApproval0 ? false : !!r.pmd_tanggal_reject,
         kegunaan: r.pmd_kegunaan || "",
-        ga2: 1,
+        ga: 1,
         kdsup: "",
         supplier: "",
         bank: "",
@@ -309,7 +309,7 @@ const getDetailForm = async (nomor) => {
     approved: true, // ← Delphi: CDSGrid.fieldbyname('Approved').AsBoolean := true
     reject: false, // ← Delphi: CDSGrid.fieldbyname('Reject').AsBoolean := false
     kegunaan: "",
-    ga2: 0,
+    ga: 0,
     kdsup: r.kdsup,
     supplier: r.supplier,
     bank: r.bank,
@@ -477,18 +477,16 @@ const saveData = async (payload, user) => {
     let accCount = 0; // Delphi: acc counter untuk cek semua reject
 
     for (const d of detail) {
-      // ── Non-GA yang Approved → insert tkasbonitem ─────────────────
-      // Delphi: if Approved AND ga2=0
-      if (d.approved && d.ga2 === 0) {
+      // Non-GA yang Approved → insert tkasbonitem
+      if (d.approved && d.ga === 0) {
+        // ← ubah dari d.ga2
         await conn.query(
-          `
-          INSERT INTO tkasbonitem
+          `INSERT INTO tkasbonitem
             (bond_nomor, bond_nourut, bond_nama, bond_spesifikasi,
-             bond_satuan, bond_qty, bond_nominal, bond_verified,
-             bond_sup_kode, bond_sup_nama, bond_bank,
-             bond_rekening, bond_atasnama)
-          VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?)
-        `,
+            bond_satuan, bond_qty, bond_nominal, bond_verified,
+            bond_sup_kode, bond_sup_nama, bond_bank,
+            bond_rekening, bond_atasnama)
+          VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?)`,
           [
             actualNomor,
             nourut,
@@ -507,33 +505,29 @@ const saveData = async (payload, user) => {
         nourut++;
       }
 
-      // ── GA Approved → update tpermintaan_dtl approved ────────────
-      // Delphi: if Approved AND ga2=1
-      if (d.approved && d.ga2 === 1) {
+      // GA Approved → update tpermintaan_dtl approved
+      if (d.approved && d.ga === 1) {
+        // ← ubah dari d.ga2
         accCount++;
         await conn.query(
-          `
-            UPDATE ga2.tpermintaan_dtl SET
-              pmd_tanggal_approved = CURDATE(),
-              pmd_user_approved    = ?,
-              pmd_dana_approved    = ?,
-              pmd_tanggal_reject   = NULL,
-              pmd_kode_reject      = 0,
-              pmd_user_reject      = '',
-              pmd_bon              = ?
-            WHERE pmd_pmt_nomor = ? AND pmd_nourut = ?
-          `,
+          `UPDATE ga2.tpermintaan_dtl SET
+            pmd_tanggal_approved = CURDATE(),
+            pmd_user_approved    = ?,
+            pmd_dana_approved    = ?,
+            pmd_tanggal_reject   = NULL,
+            pmd_kode_reject      = 0,
+            pmd_user_reject      = '',
+            pmd_bon              = ?
+          WHERE pmd_pmt_nomor = ? AND pmd_nourut = ?`,
           [user.kode, d.nilai, actualNomor, pmt_nomor, d.no],
         );
       }
 
-      // ── GA Reject → update tpermintaan_dtl reject ────────────────
-      // Delphi: if Reject AND ga2=1
-      // NOTE: Delphi cek reject TERPISAH dari approved (bisa keduanya false)
-      if (d.reject && d.ga2 === 1) {
+      // GA Reject → update tpermintaan_dtl reject
+      if (d.reject && d.ga === 1) {
+        // ← ubah dari d.ga2
         await conn.query(
-          `
-          UPDATE ga2.tpermintaan_dtl SET
+          `UPDATE ga2.tpermintaan_dtl SET
             pmd_tanggal_reject   = CURDATE(),
             pmd_kode_reject      = 2,
             pmd_user_reject      = ?,
@@ -541,8 +535,7 @@ const saveData = async (payload, user) => {
             pmd_user_approved    = '',
             pmd_dana_approved    = 0,
             pmd_bon              = ?
-          WHERE pmd_pmt_nomor = ? AND pmd_nourut = ?
-        `,
+          WHERE pmd_pmt_nomor = ? AND pmd_nourut = ?`,
           [user.kode, actualNomor, pmt_nomor, d.no],
         );
       }

@@ -83,7 +83,7 @@ const getFormData = async (nomor) => {
       total: qty * harga,
       verified: isEdit ? Number(r.verified_raw) !== 0 : true,
       guna: "",
-      ga2: 2, // non-GA existing
+      ga: 2, // non-GA existing
       rekkode: r.rekkode || "",
       reknama: r.rek_nama || "",
       cckode: r.cckode || 0,
@@ -187,7 +187,7 @@ const getFormData = async (nomor) => {
         total: qty * harga,
         verified: isEdit ? Number(r.pmd_verified_buyed) !== 0 : true,
         guna: r.pmd_kegunaan || "",
-        ga2: 1,
+        ga: 1,
         rekkode: r.pmd_rek_kode || "",
         reknama: r.rek_nama || "",
         // Prioritas: nilai yang SUDAH pernah disimpan Finance (pmd_cc_kode),
@@ -245,7 +245,7 @@ const getFormData = async (nomor) => {
     total: Number(r.bond2_qty_realisasi) * Number(r.bond2_nominal_realisasi),
     verified: true,
     guna: "",
-    ga2: 0,
+    ga: 0,
     rekkode: r.bond2_rek_kode || "",
     reknama: r.rek_nama || "",
     cckode: r.bond2_cc_kode || 0,
@@ -954,7 +954,7 @@ const getDetailPengajuanGA = async (pjhNomor) => {
       total: Number(r.total),
       guna: r.pmd_kegunaan || "",
       verified: true,
-      ga2: 1,
+      ga: 1,
       cckode: r.pmd_cc_kode || 0, // ⬅ ganti sumbernya
       ccnama: r.cc_nama || "", // ⬅
       dcnama: r.pmd_dcnama || "", // ⬅
@@ -1140,7 +1140,7 @@ const getDetailPermintaanGarmen = async (mbNomor) => {
       total: 0,
       guna: r.mbd_kegunaan || "",
       verified: true,
-      ga2: 0,
+      ga: 0,
       gabrg: 1,
       kdbrg: r.mbd_brg_kode,
       jenis_item: r.mb_jenis,
@@ -1208,7 +1208,7 @@ const getDetailInvoiceGarmen = async (ivNomor) => {
       total: qty * harga,
       guna: r.ivd_kegunaan || "",
       verified: true,
-      ga2: 0, // ← tambah ini
+      ga: 0, // ← tambah ini
       gabrg: 1,
       jenis_item: r.iv_jenis, // ← rename
       cab_item: r.cab, // ← rename
