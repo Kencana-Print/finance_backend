@@ -54,7 +54,7 @@ router.post(
 // ── Routes Bantuan Pencarian (F1 - F5) ────────────────────────────────
 
 router.get(
-  "/pengajuan-ga2",
+  "/pengajuan-ga",
   verifyToken,
   checkPermission(menuId, "view"),
   ctrl.getListPengajuanGA,
