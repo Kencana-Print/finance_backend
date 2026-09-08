@@ -545,7 +545,7 @@ const saveData = async (payload, user) => {
       }
 
       // GA (ga2=1) → update tpermintaan_dtl
-      if (d.ga2 === 1) {
+      if (d.ga === 1) {
         if (!v) {
           // Tidak diverifikasi
           let sql = `UPDATE ga2.tpermintaan_dtl SET
@@ -585,7 +585,7 @@ const saveData = async (payload, user) => {
       }
 
       // Non-GA existing (ga2=2) → update tkasbonitem
-      if (d.ga2 === 2) {
+      if (d.ga === 2) {
         await conn.query(
           `
           UPDATE tkasbonitem SET
@@ -615,7 +615,7 @@ const saveData = async (payload, user) => {
       }
 
       // Non-GA baru (ga2=0) → insert tkasbonitem2
-      if (d.ga2 === 0) {
+      if (d.ga === 0) {
         const hasPjhLink =
           ["POE", "VOU"].includes((d.pjh || "").substring(0, 3)) ||
           ["MBA", "MBO", "MBS", "MBK"].includes(
@@ -720,7 +720,7 @@ const saveData = async (payload, user) => {
       if (v && totalTerpakai !== 0 && noBkk) {
         const cUraian =
           `${d.uraian} ${d.spesifikasi || ""} ${d.qty} ${d.satuan || ""}${d.guna ? ` (${d.guna})` : ""}`.trim();
-        const noUrut = d.ga2 !== 0 ? d.no : nourut - 1;
+        const noUrut = d.ga !== 0 ? d.no : nourut - 1;
 
         await conn.query(
           `
@@ -829,7 +829,7 @@ const saveData = async (payload, user) => {
         }
       }
 
-      if (d.ga2 === 0) {
+      if (d.ga === 0) {
       } // nourut sudah di-increment di atas
     }
 
