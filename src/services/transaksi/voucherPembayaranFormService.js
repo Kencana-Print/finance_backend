@@ -554,11 +554,10 @@ const save = async (payload, userKode) => {
       }
     }
   }
-  let xpotongan = 0;
-  for (const b of bahanTambahan) {
-    if (b.nama) xpotongan += Number(b.nilai);
-  }
-  const vouTotal = xtotal - xpotongan;
+  // vou_total disimpan gross (belum dikurangi bahan tambahan).
+  // Pengurangan bahan tambahan dilakukan saat browse/tampil (kolom Net),
+  // bukan saat simpan — supaya Total header konsisten dengan total detail.
+  const vouTotal = xtotal;
 
   const tahun = tanggal.substring(0, 4);
   const conn = await db.getConnection();
