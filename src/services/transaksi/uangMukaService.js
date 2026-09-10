@@ -24,7 +24,9 @@ const getBrowse = async (startDate, endDate, cabang) => {
       (SELECT pmt.pmt_status_finance
       FROM ga2.tpermintaan_hdr pmt
       WHERE pmt.pmt_pjh_nomor = b.bon_pjh_nomor
-      ORDER BY pmt.pmt_nomor DESC LIMIT 1) AS StatusFinance
+      ORDER BY pmt.pmt_nomor DESC LIMIT 1) AS StatusFinance,
+      DATE_FORMAT(b.date_create, '%Y-%m-%d %H:%i:%s') AS TanggalDibuat,
+      b.user_create      AS UserDibuat
     FROM tkasbon b
     LEFT JOIN trekening r ON r.rek_kode = b.bon_rek_kode
     WHERE b.bon_tanggal BETWEEN ? AND ?
@@ -101,7 +103,9 @@ const getBrowsePendingAll = async () => {
        b.bon_jur_no       AS NoBukti,
        IF(b.bon_selesai=0,'Belum','Sudah') AS Selesai,
        IF(IFNULL((SELECT h.jur_close FROM tjurnal h WHERE h.jur_no = b.bon_jur_no), 0)=0,'Belum','Sudah') AS Closed,
-       pmt.pmt_status_finance AS StatusFinance
+       pmt.pmt_status_finance AS StatusFinance,
+       DATE_FORMAT(b.date_create, '%Y-%m-%d %H:%i:%s') AS TanggalDibuat,
+       b.user_create      AS UserDibuat
      FROM tkasbon b
      LEFT JOIN trekening r ON r.rek_kode = b.bon_rek_kode
      LEFT JOIN ga2.tpermintaan_hdr pmt ON pmt.pmt_pjh_nomor = b.bon_pjh_nomor
