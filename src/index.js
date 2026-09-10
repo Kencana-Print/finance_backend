@@ -54,6 +54,7 @@ const kasbonBelumSelesaiRoutes = require("./routes/laporan/kasbonBelumSelesaiRou
 const lapRekonsiliasiBankRoutes = require("./routes/laporan/rekonsiliasiBankRoutes");
 const stokFinanceRoutes = require("./routes/laporan/stokFinanceRoutes");
 const daftarHutangRoutes = require("./routes/laporan/daftarHutangRoutes");
+const biayaPerDivisiRoutes = require("./routes/laporan/biayaPerDivisiRoutes");
 
 const app = express();
 
@@ -127,6 +128,7 @@ app.use("/api/laporan/kasbon-belum-selesai", kasbonBelumSelesaiRoutes);
 app.use("/api/laporan/rekonsiliasi-bank", lapRekonsiliasiBankRoutes);
 app.use("/api/laporan/stok-finance", stokFinanceRoutes);
 app.use("/api/laporan/daftar-hutang", daftarHutangRoutes);
+app.use("/api/laporan/biaya-per-divisi", biayaPerDivisiRoutes);
 
 // ── Health check ──
 app.get("/api/health", (req, res) => {
