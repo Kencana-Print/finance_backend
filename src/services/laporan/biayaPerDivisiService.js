@@ -5,7 +5,7 @@ const getListDivisi = async () => {
   const [rows] = await db.query(
     `SELECT cc_kode AS kode, cc_nama AS nama
      FROM tcostcenter
-     ORDER BY cc_nama`,
+     ORDER BY cc_kode`,
   );
   return rows;
 };
