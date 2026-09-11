@@ -39,6 +39,10 @@ const getBiayaPerDivisi = async (cckode, startDate, endDate) => {
          NULLIF(item2.bond2_link, ''),
          NULLIF(k.bon_pjh_nomor, '')
        )                                                  AS NoPengajuan,
+       item2.bond2_link                                   AS DebugLink,
+       item2.bond2_nourut                                 AS DebugItemNourut,
+       i.jurd_nourut                                       AS DebugJurdNourut,
+       k.bon_nomor                                         AS DebugBonNomor,
        DATE_FORMAT(
          COALESCE(gaPjh.pjh_tanggal, headerPjh.pjh_tanggal, k.bon_tanggal),
          '%Y-%m-%d'
@@ -52,8 +56,6 @@ const getBiayaPerDivisi = async (cckode, startDate, endDate) => {
      INNER JOIN tjurnal j ON j.jur_no = i.jurd_jur_no
      INNER JOIN tkasbon k ON k.bon_jur_no = j.jur_no
      LEFT JOIN trekening r ON r.rek_kode = i.jurd_rek_kode
-
-     -- (1) Item GA — link via pmd_bon + pmd_nourut = jurd_nourut
      LEFT JOIN ga2.tpermintaan_dtl gaDtl
             ON gaDtl.pmd_bon = k.bon_nomor
            AND gaDtl.pmd_nourut = i.jurd_nourut
@@ -61,22 +63,25 @@ const getBiayaPerDivisi = async (cckode, startDate, endDate) => {
             ON gaHdr.pmt_nomor = gaDtl.pmd_pmt_nomor
      LEFT JOIN ga2.tpengajuan2_hdr gaPjh
             ON gaPjh.pjh_nomor = gaHdr.pmt_pjh_nomor
-
-     -- (2) Item baru non-GA (POE/VOU/MB/IV) — link via tkasbonitem2
      LEFT JOIN tkasbonitem2 item2
             ON item2.bond2_nomor = k.bon_nomor
            AND item2.bond2_nourut = i.jurd_nourut
-
-     -- (3) Fallback header — kasbon format lama, satu pengajuan per header
      LEFT JOIN ga2.tpengajuan2_hdr headerPjh
             ON headerPjh.pjh_nomor = k.bon_pjh_nomor
-
      WHERE i.jurd_nourut <> 0
        AND i.jurd_trs IN ('BKK', 'BBK')
        AND i.jurd_cc_kode = ?
        AND j.jur_tanggal >= ? AND j.jur_tanggal <= ?
      ORDER BY IFNULL(r.rek_nama, i.jurd_rek_kode), j.jur_tanggal, j.jur_no`,
     [cckode, startDate, endDate],
+  );
+
+  console.log(
+    JSON.stringify(
+      rows.filter((r) => r.DebugBonNomor === "P04-BON.2026.00559"),
+      null,
+      2,
+    ),
   );
 
   // ── Group per Nama Akun (sesuai format cetak: header akun + detail) ──
