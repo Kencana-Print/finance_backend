@@ -76,14 +76,6 @@ const getBiayaPerDivisi = async (cckode, startDate, endDate) => {
     [cckode, startDate, endDate],
   );
 
-  console.log(
-    JSON.stringify(
-      rows.filter((r) => r.DebugBonNomor === "P04-BON.2026.00559"),
-      null,
-      2,
-    ),
-  );
-
   // ── Group per Nama Akun (sesuai format cetak: header akun + detail) ──
   const grouped = new Map();
   for (const row of rows) {
