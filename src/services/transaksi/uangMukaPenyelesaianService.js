@@ -120,7 +120,7 @@ const getFormData = async (nomor) => {
       d.pmd_dana_approved, d.pmd_tanggal_reject,
       d.pmd_bon, d.pmd_kegunaan, d.pmd_verified_buyed,
       d.pmd_nilai_terpakai, d.pmd_tanggal_approved,
-      d.pmd_tanggal_buyed, d.pmd_rek_kode,
+      d.pmd_tanggal_buyed, d.pmd_rek_kode, d.pmd_status_finance
       r.rek_nama, d.pmd_cc_kode, c.cc_nama, d.pmd_dcnama,
       j.pjh_cc_kode, j.pjh_cc_dcnama, pcc.cc_nama AS pjh_cc_nama
     FROM tkasbon k
@@ -195,6 +195,7 @@ const getFormData = async (nomor) => {
         cckode: r.pmd_cc_kode || r.pjh_cc_kode || 0,
         ccnama: r.cc_nama || r.pjh_cc_nama || "",
         dcnama: r.pmd_dcnama || r.pjh_cc_dcnama || "",
+        statusFinance: r.pmd_status_finance || "",
         kdsup: "",
         supplier: "",
         bank: "",
@@ -896,7 +897,10 @@ const getListPengajuanGA = async (cabang) => {
       j.pjh_ke, j.pjh_user_kode AS nama, j.pjh_keterangan AS keterangan
     FROM ga2.tpengajuan2_hdr j
     LEFT JOIN ga2.tpermintaan_hdr h ON h.pmt_pjh_nomor = j.pjh_nomor
-    WHERE j.pjh_nonga = 0
+    WHERE (
+        j.pjh_nonga = 0
+        OR UPPER(j.pjh_jenis_permintaan) = 'PERMINTAAN BARANG'
+      )
       AND (
         h.pmt_nomor IS NULL
         OR (
@@ -927,6 +931,7 @@ const getDetailPengajuanGA = async (pjhNomor) => {
       d.pmd_nilai_buyed, d.pmd_dana_approved, d.pmd_tanggal_reject, d.pmd_bon,
       d.pmd_kegunaan, (d.pmd_qty_riil * d.pmd_nilai) AS total, d.pmd_verified_buyed,
       h.pmt_buyed, d.pmd_nilai_terpakai, d.pmd_tanggal_approved, d.pmd_tanggal_buyed,
+      d.pmd_status_finance
       j.pjh_jenis_permintaan, j.pjh_nonga,
       d.pmd_cc_kode, d.pmd_dcnama, cc.cc_nama
     FROM ga2.tpermintaan_dtl d
@@ -958,6 +963,7 @@ const getDetailPengajuanGA = async (pjhNomor) => {
       cckode: r.pmd_cc_kode || 0, // ⬅ ganti sumbernya
       ccnama: r.cc_nama || "", // ⬅
       dcnama: r.pmd_dcnama || "", // ⬅
+      statusFinance: r.pmd_status_finance || "",
       rekkode: "",
       reknama: "",
       edit: 0,
@@ -977,11 +983,11 @@ const getDetailPengajuanGA = async (pjhNomor) => {
   });
 };
 
-// ── Update Status Finance (Pending/Menunggu Pembelian/Bulan Depan/
-// Otorisasi) — sekarang per-pengajuan (pjh_nomor), bukan per-kasbon,
-// karena satu kasbon bisa berisi baris dari banyak pengajuan berbeda,
-// dan satu pengajuan bisa tersebar di banyak kasbon (partial disbursement).
-const updateStatusFinance = async (pjhNomor, status) => {
+// ── Update Status Finance — per DETAIL ITEM (pmt_nomor + nourut), bukan
+// per pengajuan lagi, karena satu pengajuan bisa punya item-item yang
+// tersebar di banyak Uang Muka berbeda dengan status/alasan pending
+// masing-masing. Header-level status akan saling menimpa antar-item.
+const updateStatusFinance = async (pmtNomor, nourut, status) => {
   const validStatus = [
     "PENDING",
     "MENUNGGU_PEMBELIAN",
@@ -992,13 +998,12 @@ const updateStatusFinance = async (pjhNomor, status) => {
   if (!validStatus.includes(status)) throw new Error("Status tidak valid.");
 
   const [result] = await db.query(
-    `UPDATE ga2.tpermintaan_hdr SET pmt_status_finance = ? WHERE pmt_pjh_nomor = ?`,
-    [status, pjhNomor],
+    `UPDATE ga2.tpermintaan_dtl SET pmd_status_finance = ?
+     WHERE pmd_pmt_nomor = ? AND pmd_nourut = ?`,
+    [status, pmtNomor, nourut],
   );
   if (result.affectedRows === 0)
-    throw new Error(
-      "Permintaan untuk pengajuan ini belum ada — tarik dulu lewat F1.",
-    );
+    throw new Error("Item permintaan tidak ditemukan.");
 };
 
 // ── Bantuan F2: PO External ───────────────────────────────────────────
