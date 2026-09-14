@@ -120,7 +120,7 @@ const getFormData = async (nomor) => {
       d.pmd_dana_approved, d.pmd_tanggal_reject,
       d.pmd_bon, d.pmd_kegunaan, d.pmd_verified_buyed,
       d.pmd_nilai_terpakai, d.pmd_tanggal_approved,
-      d.pmd_tanggal_buyed, d.pmd_rek_kode, d.pmd_status_finance
+      d.pmd_tanggal_buyed, d.pmd_rek_kode, d.pmd_status_finance,
       r.rek_nama, d.pmd_cc_kode, c.cc_nama, d.pmd_dcnama,
       j.pjh_cc_kode, j.pjh_cc_dcnama, pcc.cc_nama AS pjh_cc_nama
     FROM tkasbon k
@@ -931,7 +931,7 @@ const getDetailPengajuanGA = async (pjhNomor) => {
       d.pmd_nilai_buyed, d.pmd_dana_approved, d.pmd_tanggal_reject, d.pmd_bon,
       d.pmd_kegunaan, (d.pmd_qty_riil * d.pmd_nilai) AS total, d.pmd_verified_buyed,
       h.pmt_buyed, d.pmd_nilai_terpakai, d.pmd_tanggal_approved, d.pmd_tanggal_buyed,
-      d.pmd_status_finance
+      d.pmd_status_finance,
       j.pjh_jenis_permintaan, j.pjh_nonga,
       d.pmd_cc_kode, d.pmd_dcnama, cc.cc_nama
     FROM ga2.tpermintaan_dtl d
