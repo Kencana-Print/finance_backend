@@ -50,6 +50,62 @@ const getDcOptions = async (cckode) => {
   return rows;
 };
 
+// ── Supplier search (F-lookup) ─────────────────────────────────────────
+const getSupplierOptions = async (search = "") => {
+  const [rows] = await db.query(
+    `
+    SELECT sup_kode AS kode, sup_nama AS nama
+    FROM kencanaprint.tsupplier
+    WHERE sup_aktif = 'Y'
+      AND (sup_nama LIKE ? OR sup_kode LIKE ?)
+    ORDER BY sup_nama
+  `,
+    [`%${search}%`, `%${search}%`],
+  );
+  return rows;
+};
+
+// ── Supplier detail (bank/rekening per supplier) ────────────────────────
+const getSupplierDetail = async (kode) => {
+  const [rows] = await db.query(
+    `
+    SELECT a.sup_kode AS kode, a.sup_nama AS nama,
+      b.supd_bank AS bank, b.supd_rekening AS rekening,
+      b.supd_atasnama AS atasnama
+    FROM kencanaprint.tsupplier a
+    LEFT JOIN kencanaprint.tsupplieritem b ON b.supd_kode = a.sup_kode
+    WHERE a.sup_aktif = 'Y' AND a.sup_kode = ?
+    ORDER BY b.supd_bank
+  `,
+    [kode],
+  );
+  return rows;
+};
+
+// ── Petty Cash (nomor klaim) — dipanggil dari form BKK ──────────────────
+// Catatan: nomor petty cash yang sudah dipakai di BKK manapun (jurd_mb
+// terisi & jurd_trs='BKK') di-exclude, supaya tidak double pakai.
+// Sesuaikan/skip filter ini kalau ternyata petty cash boleh dipakai berkali-kali.
+const getPettyCashOptions = async (search = "") => {
+  const [rows] = await db.query(
+    `
+    SELECT h.pck_nomor AS nomor,
+      DATE_FORMAT(h.pck_tanggal,'%Y-%m-%d') AS tanggal,
+      h.pck_cab AS store,
+      g.gdg_nama AS namaStore,
+      h.pck_total AS nominal
+    FROM retail.tpettycash_klaim_hdr h
+    LEFT JOIN retail.tgudang g ON g.gdg_kode = h.pck_cab
+    WHERE h.pck_status = 'APPROVED'
+      AND (h.pck_bkk_nomor IS NULL OR h.pck_bkk_nomor = '')
+      AND (h.pck_nomor LIKE ? OR h.pck_cab LIKE ?)
+    ORDER BY h.pck_nomor
+  `,
+    [`%${search}%`, `%${search}%`],
+  );
+  return rows;
+};
+
 // ── Generate nomor otomatis BKK ───────────────────────────────────────
 const getMaxNomor = async (cabang, conn) => {
   const prefix = `${cabang}-BKK.${new Date().getFullYear()}.`;
@@ -73,7 +129,6 @@ const getNomorOtomatis = async (bkkNomor, localNn, conn) => {
 
 // ── Load form edit ────────────────────────────────────────────────────
 const getDetailForm = async (nomor) => {
-  // Load header + detail sekaligus
   const [rows] = await db.query(
     `
     SELECT h.jur_no, DATE_FORMAT(h.jur_tanggal,'%Y-%m-%d') AS jur_tanggal,
@@ -83,14 +138,18 @@ const getDetailForm = async (nomor) => {
       d.jurd_nourut, d.jurd_trs, d.jurd_rek_kode AS det_rek_kode,
       d.jurd_uraian, d.jurd_debet,
       r.rek_nama AS det_reknama,
-      d.jurd_cc_kode, c.cc_nama,d.jurd_dcnama,
-      d.jurd_satuan,d.jurd_qty,d.jurd_harga,d.jurd_mb,d.jurd_brg_kode,
-      m.mb_jenis,m.mb_cab
+      d.jurd_cc_kode, c.cc_nama, d.jurd_dcnama,
+      d.jurd_satuan, d.jurd_qty, d.jurd_harga, d.jurd_mb, d.jurd_pck, d.jurd_brg_kode,
+      m.mb_jenis, m.mb_cab,
+      p.pck_cab AS pck_store, gp.gdg_nama AS pck_namaStore,
+      d.jurd_sup_kode, d.jurd_sup_nama, d.jurd_bank, d.jurd_rekening, d.jurd_atasnama
     FROM tjurnal h
     LEFT JOIN tjurnalitem d ON d.jurd_jur_no = h.jur_no
     LEFT JOIN trekening r ON r.rek_kode = d.jurd_rek_kode
     LEFT JOIN tcostcenter c ON c.cc_kode = d.jurd_cc_kode
-    left join kencanaprint.tgarmenmintabeli_hdr m ON m.mb_nomor=d.jurd_mb
+    LEFT JOIN kencanaprint.tgarmenmintabeli_hdr m ON m.mb_nomor = d.jurd_mb
+    LEFT JOIN retail.tpettycash_klaim_hdr p ON p.pck_nomor = d.jurd_pck
+    LEFT JOIN retail.tgudang gp ON gp.gdg_kode = p.pck_cab
     WHERE d.jurd_trs = 'BKK' AND h.jur_no = ?
     ORDER BY d.jurd_nourut
   `,
@@ -113,10 +172,17 @@ const getDetailForm = async (nomor) => {
       dcnama: r.jurd_dcnama || "",
       dckode: r.jurd_cc_kode || 0,
       mb: r.jurd_mb || "",
+      pck: r.jurd_pck || "",
+      pckStore: r.pck_namaStore || "",
       kdbrg: r.jurd_brg_kode || "",
       satuan: r.jurd_satuan || "",
       qty: Number(r.jurd_qty),
       harga: Number(r.jurd_harga),
+      supkode: r.jurd_sup_kode || "",
+      supnama: r.jurd_sup_nama || "",
+      bank: r.jurd_bank || "",
+      rekening: r.jurd_rekening || "",
+      atasnama: r.jurd_atasnama || "",
     }));
 
   return {
@@ -255,9 +321,10 @@ const saveData = async (payload, user) => {
         `
         INSERT INTO tjurnalitem
           (jurd_jur_no, jurd_trs, jurd_nourut, jurd_uraian,
-           jurd_satuan,jurd_qty,jurd_harga,jurd_mb,jurd_brg_kode,
-           jurd_debet, jurd_rek_kode, jurd_cc_kode, jurd_dcnama)
-        VALUES (?, 'BKK', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+           jurd_satuan, jurd_qty, jurd_harga, jurd_mb, jurd_pck, jurd_brg_kode,
+           jurd_debet, jurd_rek_kode, jurd_cc_kode, jurd_dcnama,
+           jurd_sup_kode, jurd_sup_nama, jurd_bank, jurd_rekening, jurd_atasnama)
+        VALUES (?, 'BKK', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
         [
           actualNomor,
@@ -266,14 +333,47 @@ const saveData = async (payload, user) => {
           d.satuan,
           Number(d.qty),
           Number(d.harga),
-          d.mb,
+          d.mb || "",
+          d.pck || "",
           d.kdbrg,
           Number(d.total),
           d.rekkode || "",
           d.cckode || 0,
           d.dcnama || "",
+          d.supkode || "",
+          d.supnama || "",
+          d.bank || "",
+          d.rekening || "",
+          d.atasnama || "",
         ],
       );
+
+      // ── Link balik ke petty cash: BKK ini bayar klaim petty cash tsb ──
+      if (d.pck) {
+        const [updPck] = await conn.query(
+          `
+          UPDATE retail.tpettycash_klaim_hdr
+          SET pck_bkk_nomor = ?,
+              pck_status    = 'ON_TRANSFER',
+              date_transfer = NOW(),
+              user_modified = ?,
+              date_modified = NOW()
+          WHERE pck_nomor = ? AND pck_status = 'APPROVED'
+        `,
+          [actualNomor, user.kode, d.pck],
+        );
+        if (updPck.affectedRows === 0) {
+          throw new Error(
+            `Klaim Petty Cash ${d.pck} sudah tidak berstatus APPROVED. Tidak bisa dibuatkan BKK.`,
+          );
+        }
+        // Ikut sinkronkan status pc-detail di bawahnya
+        await conn.query(
+          `UPDATE retail.tpettycash_hdr SET pc_status = 'ON_TRANSFER', user_modified = ?, date_modified = NOW()
+           WHERE pck_nomor = ?`,
+          [user.kode, d.pck],
+        );
+      }
 
       // Delphi: BKM otomatis jika account A-111
       if ((d.rekkode || "").startsWith("A-111")) {
@@ -382,7 +482,9 @@ const getPrintData = async (nomor) => {
   const [detail] = await db.query(
     `
     SELECT jurd_nourut AS no, jurd_uraian AS uraian,
-      jurd_debet AS nominal
+      jurd_debet AS nominal,
+      jurd_sup_nama AS supplier, jurd_bank AS bank,
+      jurd_rekening AS rekening, jurd_atasnama AS atasnama
     FROM tjurnalitem
     WHERE jurd_debet<>0 and jurd_jur_no = ? AND jurd_trs = 'BKK'
     ORDER BY jurd_nourut
@@ -401,6 +503,9 @@ module.exports = {
   getKeteranganOptions,
   getCostCenterOptions,
   getDcOptions,
+  getSupplierOptions,
+  getSupplierDetail,
+  getPettyCashOptions,
   getDetailForm,
   saveData,
   getPrintData,

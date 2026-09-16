@@ -41,6 +41,36 @@ const getDcOptions = async (req, res) => {
     res.status(500).json({ success: false, message: e.message });
   }
 };
+const getSupplierOptions = async (req, res) => {
+  try {
+    res.json({
+      success: true,
+      data: await svc.getSupplierOptions(req.query.search || ""),
+    });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+};
+const getSupplierDetail = async (req, res) => {
+  try {
+    res.json({
+      success: true,
+      data: await svc.getSupplierDetail(req.params.kode),
+    });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+};
+const getPettyCashOptions = async (req, res) => {
+  try {
+    res.json({
+      success: true,
+      data: await svc.getPettyCashOptions(req.query.search || ""),
+    });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+};
 const getDetailForm = async (req, res) => {
   try {
     res.json({
@@ -84,6 +114,9 @@ module.exports = {
   getKeteranganOptions,
   getCostCenterOptions,
   getDcOptions,
+  getSupplierOptions,
+  getSupplierDetail,
+  getPettyCashOptions,
   getDetailForm,
   saveData,
   getPrintData,

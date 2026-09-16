@@ -39,6 +39,24 @@ router.get(
   ctrl.getDcOptions,
 );
 router.get(
+  "/supplier",
+  verifyToken,
+  checkPermission(menuId, "view"),
+  ctrl.getSupplierOptions,
+);
+router.get(
+  "/supplier/:kode",
+  verifyToken,
+  checkPermission(menuId, "view"),
+  ctrl.getSupplierDetail,
+);
+router.get(
+  "/petty-cash",
+  verifyToken,
+  checkPermission(menuId, "view"),
+  ctrl.getPettyCashOptions,
+);
+router.get(
   "/form/:nomor",
   verifyToken,
   checkPermission(menuId, "view"),
