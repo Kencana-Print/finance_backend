@@ -89,14 +89,11 @@ const getDetailPengajuanGA = async (req, res) => {
 
 const updateStatusFinance = async (req, res) => {
   try {
-    const { pjhNomor } = req.params;
-    const { status } = req.body;
-    await svc.updateStatusFinance(pjhNomor, status);
-    res
-      .status(200)
-      .json({ success: true, message: "Status berhasil diperbarui." });
-  } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
+    const { pmtNomor, nourut, status } = req.body;
+    await service.updateStatusFinance(pmtNomor, nourut, status);
+    res.json({ success: true, message: "Status diperbarui." });
+  } catch (e) {
+    res.status(400).json({ success: false, message: e.message });
   }
 };
 

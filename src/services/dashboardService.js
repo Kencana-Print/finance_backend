@@ -214,20 +214,25 @@ const getSummary = async (cabang) => {
   );
 
   return {
-    kasbon: { count: Number(kasbonRow.count), total: Number(kasbonRow.total) },
-    transfer: { count: Number(pjtRow.count), total: Number(pjtRow.total) },
+    kasbon: {
+      count: Number(kasbonRow.count),
+      total: Math.round(Number(kasbonRow.total)),
+    },
+    transfer: {
+      count: Number(pjtRow.count),
+      total: Math.round(Number(pjtRow.total)),
+    },
     setoran: { count: Number(setoranRow.count) },
     serverDate: dateRow.serverDate,
-    // Ganti saldoKas tunggal jadi dua kategori:
     saldo: {
       kas: {
         account: defaultKasAccount,
-        saldo: saldoKas,
+        saldo: Math.round(saldoKas),
         count: kasAccounts.length,
       },
       bank: {
         account: defaultBankAccount,
-        saldo: saldoBank,
+        saldo: Math.round(saldoBank),
         count: bankAccounts.length,
       },
     },
@@ -235,9 +240,12 @@ const getSummary = async (cabang) => {
     stok: { negativeCount: Number(stokRow.count) },
     voucherPt: {
       count: Number(voucherPtRow.count),
-      total: Number(voucherPtRow.total),
+      total: Math.round(Number(voucherPtRow.total)),
     },
-    hutang: { count: Number(hutangRow.count), total: Number(hutangRow.total) },
+    hutang: {
+      count: Number(hutangRow.count),
+      total: Math.round(Number(hutangRow.total)),
+    },
   };
 };
 
