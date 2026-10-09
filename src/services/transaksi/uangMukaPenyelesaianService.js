@@ -843,7 +843,9 @@ const saveData = async (payload, user) => {
     for (const pmt of affectedPmt) {
       const [[sisa]] = await conn.query(
         `SELECT COUNT(*) AS cnt FROM ga2.tpermintaan_dtl
-     WHERE pmd_pmt_nomor = ? AND pmd_bon = '' AND pmd_tanggal_reject IS NULL`,
+         WHERE pmd_pmt_nomor = ?
+           AND pmd_tanggal_reject IS NULL
+           AND (pmd_bon = '' OR pmd_verified_buyed = 0)`,
         [pmt],
       );
       if (Number(sisa.cnt) === 0) {
@@ -903,12 +905,11 @@ const getListPengajuanGA = async (cabang) => {
       )
       AND (
         h.pmt_nomor IS NULL
-        OR (
-          h.pmt_close = 0
-          AND EXISTS (
-            SELECT 1 FROM ga2.tpermintaan_dtl d
-            WHERE d.pmd_pmt_nomor = h.pmt_nomor AND d.pmd_bon = ''
-          )
+        OR EXISTS (
+          SELECT 1 FROM ga2.tpermintaan_dtl d
+          WHERE d.pmd_pmt_nomor = h.pmt_nomor
+            AND d.pmd_tanggal_reject IS NULL
+            AND (d.pmd_bon = '' OR d.pmd_verified_buyed = 0)
         )
       )
   `;
@@ -939,7 +940,8 @@ const getDetailPengajuanGA = async (pjhNomor) => {
     LEFT JOIN ga2.tpengajuan2_hdr j ON j.pjh_nomor = h.pmt_pjh_nomor
     LEFT JOIN tcostcenter cc ON cc.cc_kode = d.pmd_cc_kode
     WHERE h.pmt_pjh_nomor = ?
-      AND d.pmd_bon = ''
+      AND d.pmd_tanggal_reject IS NULL
+      AND (d.pmd_bon = '' OR d.pmd_verified_buyed = 0)
     ORDER BY d.pmd_nourut`,
     [pjhNomor],
   );
